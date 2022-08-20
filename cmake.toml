@@ -1,23 +1,28 @@
 [project]
 name = "sdkgenny-lua"
+cmake-before = """
+set(VCPKG_TARGET_ARCHITECTURE x64)
+set(VCPKG_CRT_LINKAGE static)
+set(VCPKG_LIBRARY_LINKAGE static)
+set(VCPKG_TARGET_TRIPLET x64-windows-static)
+"""
 
 [vcpkg]
 version = "2022.05.10"
 packages = [
-    "fmt",
-    "spdlog",
     "pegtl",
-    "sol2",
+    "lua",
+    "sol2"
 ]
 
-[fetch-content]
-sdkgenny = { git = "https://github.com/cursey/sdkgenny.git", tag = "f03026eaced3bd033e201bc7d1c9d9d348054113" }
-
 [find-package]
-fmt = {}
-spdlog = {}
 pegtl = {}
-sol2 = {}
+lua = { required = false }
+sol2 = { required = false }
+
+[fetch-content.sdkgenny]
+git = "https://github.com/cursey/sdkgenny.git"
+tag = "f03026eaced3bd033e201bc7d1c9d9d348054113" 
 
 [conditions]
 static = "${VCPKG_TARGET_TRIPLET} MATCHES \".+static\""
@@ -29,8 +34,7 @@ sources = [
     "src/**.hpp",
 ]
 link-libraries = [
-    "fmt::fmt",
-    "spdlog::spdlog",
+    "lua",
     "sol2::sol2",
     "sdkgenny"
 ]
@@ -47,6 +51,11 @@ include-directories = [
     "src",
 ]
 link-libraries = [
+    "lua",
+    "sol2::sol2",
     "sdkgenny-lua",
 ]
 compile-features = ["cxx_std_17"]
+
+[target.test.properties]
+static.MSVC_RUNTIME_LIBRARY = "MultiThreaded$<$<CONFIG:Debug>:Debug>"

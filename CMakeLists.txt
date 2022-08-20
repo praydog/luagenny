@@ -27,6 +27,11 @@ if(CMKR_ROOT_PROJECT)
 	configure_file(cmake.toml cmake.toml COPYONLY)
 endif()
 
+set(VCPKG_TARGET_ARCHITECTURE x64)
+set(VCPKG_CRT_LINKAGE static)
+set(VCPKG_LIBRARY_LINKAGE static)
+set(VCPKG_TARGET_TRIPLET x64-windows-static)
+
 project(sdkgenny-lua)
 
 if(CMKR_ROOT_PROJECT AND NOT CMKR_DISABLE_VCPKG)
@@ -52,21 +57,19 @@ FetchContent_Declare(sdkgenny
 FetchContent_MakeAvailable(sdkgenny)
 
 # Packages
-find_package(fmt REQUIRED)
-
-find_package(spdlog REQUIRED)
-
 find_package(pegtl REQUIRED)
 
-find_package(sol2 REQUIRED)
+find_package(lua)
+
+find_package(sol2)
 
 # Target sdkgenny-lua
 set(CMKR_TARGET sdkgenny-lua)
 set(sdkgenny-lua_SOURCES "")
 
 list(APPEND sdkgenny-lua_SOURCES
-	"src/Lua.cpp"
-	"src/Lua.hpp"
+	"src/LuaGenny.cpp"
+	"src/LuaGenny.hpp"
 )
 
 list(APPEND sdkgenny-lua_SOURCES
@@ -91,8 +94,7 @@ target_compile_options(sdkgenny-lua PUBLIC
 )
 
 target_link_libraries(sdkgenny-lua PUBLIC
-	fmt::fmt
-	spdlog::spdlog
+	lua
 	sol2::sol2
 	sdkgenny
 )
@@ -142,8 +144,17 @@ target_include_directories(test PRIVATE
 )
 
 target_link_libraries(test PRIVATE
+	lua
+	sol2::sol2
 	sdkgenny-lua
 )
+
+if(${VCPKG_TARGET_TRIPLET} MATCHES ".+static") # static
+	set_target_properties(test PROPERTIES
+		MSVC_RUNTIME_LIBRARY
+			"MultiThreaded$<$<CONFIG:Debug>:Debug>"
+	)
+endif()
 
 unset(CMKR_TARGET)
 unset(CMKR_SOURCES)

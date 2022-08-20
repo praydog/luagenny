@@ -1,21 +1,25 @@
-#include <spdlog/spdlog.h>
+extern "C" {
+#include <lua.h>
+#include <lualib.h>
+#include <lauxlib.h>
+}
 #include <sol/sol.hpp>
 
 #include <Genny.hpp>
 
-#include "Lua.hpp"
+#include "LuaGenny.hpp"
 
 namespace sdkgennylua {
 #define GENNY_OBJECT_GEN(luaname, cppname) \
     "is_" #luaname, [](genny::Object& o) { return o.is_a<cppname>(); }, \
-    "as_" #luaname, [](genny::Object& o) -> cppname* { return o.is_a<cppname>() ? dynamic_cast<cppname*>(&o) : nullptr; }, \
+    "as_" #luaname, [](genny::Object& o) -> cppname* { return o.is_a<cppname>() ? dynamic_cast<cppname*>(&o) : nullptr; }/*, \
     "has_any_" #luaname, [](genny::Object& o) { return o.has_any<cppname>(); }, \
     "has_any_" #luaname "_in_children", [](genny::Object& o) { return o.has_any_in_children<cppname>(); }, \
     #luaname "_owners", [](genny::Object& o) { return o.owners<cppname>(); }, \
     "get_all_" #luaname, [](genny::Object& o) { return o.get_all<cppname>(); }, \
     "is_child_of_" #luaname, [](genny::Object& o, cppname* obj) { return o.is_child_of<cppname>(obj); }, \
     "find_" #luaname, [](genny::Object& o, std::string name) { return o.find<cppname>(name); }, \
-    "find_" #luaname "_in_owners", [](genny::Object& o, std::string name, bool include_self) { return o.find_in_owners<cppname>(name, include_self); }
+    "find_" #luaname "_in_owners", [](genny::Object& o, std::string name, bool include_self) { return o.find_in_owners<cppname>(name, include_self); }*/
     
 
 #define MULTIFUNCTION(parent_type, name, possible_type) \
