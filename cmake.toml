@@ -1,10 +1,6 @@
 [project]
 name = "sdkgenny-lua"
 cmake-before = """
-set(VCPKG_TARGET_ARCHITECTURE x64)
-set(VCPKG_CRT_LINKAGE static)
-set(VCPKG_LIBRARY_LINKAGE static)
-set(VCPKG_TARGET_TRIPLET x64-windows-static)
 """
 
 [vcpkg]
@@ -15,14 +11,15 @@ packages = [
     "sol2"
 ]
 
+[fetch-content.sdkgenny]
+git = "https://github.com/cursey/sdkgenny.git"
+tag = "f03026eaced3bd033e201bc7d1c9d9d348054113" 
+
+
 [find-package]
 pegtl = {}
 lua = { required = false }
 sol2 = { required = false }
-
-[fetch-content.sdkgenny]
-git = "https://github.com/cursey/sdkgenny.git"
-tag = "f03026eaced3bd033e201bc7d1c9d9d348054113" 
 
 [conditions]
 static = "${VCPKG_TARGET_TRIPLET} MATCHES \".+static\""
