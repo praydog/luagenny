@@ -189,6 +189,7 @@ int open(lua_State* l) {
         "string", &genny::Constant::string
     );
 
-    return 0;
+    sdkgenny.push(l);
+    return 1;
 } // namespace sdkgennylua
 }
