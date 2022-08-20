@@ -52,7 +52,13 @@ FetchContent_Declare(sdkgenny
 FetchContent_MakeAvailable(sdkgenny)
 
 # Packages
+find_package(fmt REQUIRED)
+
 find_package(spdlog REQUIRED)
+
+find_package(pegtl REQUIRED)
+
+find_package(sol2 REQUIRED)
 
 # Target sdkgenny-lua
 set(CMKR_TARGET sdkgenny-lua)
@@ -80,8 +86,15 @@ target_compile_features(sdkgenny-lua PUBLIC
 	cxx_std_17
 )
 
+target_compile_options(sdkgenny-lua PUBLIC
+	"/bigobj"
+)
+
 target_link_libraries(sdkgenny-lua PUBLIC
+	fmt::fmt
 	spdlog::spdlog
+	sol2::sol2
+	sdkgenny
 )
 
 if(${VCPKG_TARGET_TRIPLET} MATCHES ".+static") # static
@@ -122,6 +135,10 @@ source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${test_SOURCES})
 
 target_compile_features(test PRIVATE
 	cxx_std_17
+)
+
+target_include_directories(test PRIVATE
+	src
 )
 
 target_link_libraries(test PRIVATE
