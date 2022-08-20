@@ -147,6 +147,7 @@ target_link_libraries(test PRIVATE
 	lua
 	sol2::sol2
 	sdkgenny-lua
+	sdkgenny
 )
 
 if(${VCPKG_TARGET_TRIPLET} MATCHES ".+static") # static
