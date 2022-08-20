@@ -1,3 +1,5 @@
+#include <vector>
+
 extern "C" {
 #include <lua.h>
 #include <lualib.h>
@@ -10,6 +12,171 @@ extern "C" {
 #include "LuaGenny.hpp"
 
 namespace luagenny {
+static constexpr auto hash(std::string_view data) {
+    size_t result = 0xcbf29ce484222325;
+
+    for (char c : data) {
+        result ^= c;
+        result *= (size_t)1099511628211;
+    }
+
+    return result;
+}
+
+constexpr auto operator "" _fnv(const char* s, size_t) {
+    return hash(s);
+}
+
+namespace api {
+sol::object standalone_parse(sol::this_state s, uintptr_t address, genny::Type* t, genny::Variable* v = nullptr);
+
+template<typename T>
+class Overlay {
+public:
+    Overlay(uintptr_t address, T* t) 
+        : m_address(address),
+        m_type{t}
+    {
+    }
+
+    virtual sol::object index(sol::this_state s, sol::object key) = 0;
+
+    sol::object type_(sol::this_state s) const {
+        return sol::make_object(s, m_type);
+    }
+
+    sol::object address(sol::this_state s) const {
+        return sol::make_object(s, m_address);
+    }
+
+protected:
+    uintptr_t m_address{};
+    T* m_type{};
+};
+
+class StructOverlay : public Overlay<genny::Struct> {
+public:
+    StructOverlay(uintptr_t address, genny::Struct* s) 
+        : Overlay(address, s)
+    {
+    }
+
+    sol::object index(sol::this_state s, sol::object key) override {
+        if (key.is<int>()) {
+            // Pretend it's an inlined array
+            return sol::make_object(s, StructOverlay{m_address + (key.as<int>() * m_type->size()), m_type});
+        }
+
+        if (!key.is<std::string>()) {
+            return sol::make_object(s, sol::nil);
+        }
+
+        const auto name = key.as<std::string>();
+        const auto v = m_type->find<genny::Variable>(name);
+
+        if (v == nullptr || v->type() == nullptr) {
+            return sol::make_object(s, sol::nil);
+        }
+
+        const auto value = parse_and_read(s, v);
+
+        return sol::make_object(s, value);
+    }
+
+protected:
+    sol::object parse_and_read(sol::this_state s, genny::Variable* v) {
+        const auto offset = v->offset();
+
+        if (offset > m_type->size()) {
+            throw std::runtime_error("offset out of bounds");
+            return sol::make_object(s, sol::nil);
+        }
+
+        const auto address = m_address + offset;
+
+        return sol::make_object(s, standalone_parse(s, address, v->type(), v));
+    }
+};
+
+sol::object standalone_parse(sol::this_state s, uintptr_t address, genny::Type* t, genny::Variable* v) {
+    if (t == nullptr) {
+        return sol::make_object(s, address);
+    }
+
+    if (t->is_a<genny::Struct>()) {
+        return sol::make_object(s, StructOverlay{address, dynamic_cast<genny::Struct*>(t)});
+    }
+
+    const auto is_pointer = t->is_a<genny::Pointer>();
+    genny::Type* pointer_t = nullptr;
+
+    auto metadata = t->metadata();
+
+    if (metadata.empty() && v != nullptr) {
+        metadata = v->metadata();
+    }
+
+    if (is_pointer) {
+        address = *reinterpret_cast<uintptr_t*>(address);
+
+        if (address == 0) {
+            return sol::make_object(s, sol::nil);
+        }
+
+        pointer_t = dynamic_cast<genny::Pointer*>(t)->to();
+
+        if (pointer_t->is_a<genny::Pointer>()) {
+            return standalone_parse(s, address, pointer_t);
+        }
+
+        if (pointer_t->is_a<genny::Struct>()) {
+            return sol::make_object(s, StructOverlay{address, dynamic_cast<genny::Struct*>(pointer_t)});
+        }
+
+        //metadata = pointer_t->metadata();
+    }
+
+
+    if (metadata.empty()){
+        throw std::runtime_error("No metadata for type");
+        return sol::make_object(s, sol::nil);
+    }
+
+    for (auto&& md : metadata) {
+        switch (hash(md)) {
+            case "bool"_fnv:
+                return sol::make_object(s, *(bool*)address);
+            case "u8"_fnv:
+                return sol::make_object(s, *(uint8_t*)address);
+            case "u16"_fnv:
+                return sol::make_object(s, *(uint16_t*)address);
+            case "u32"_fnv:
+                return sol::make_object(s, *(uint32_t*)address);
+            case "u64"_fnv:
+                return sol::make_object(s, *(uint64_t*)address);
+            case "i8"_fnv:
+                return sol::make_object(s, *(int8_t*)address);
+            case "i16"_fnv:
+                return sol::make_object(s, *(int16_t*)address);
+            case "i32"_fnv:
+                return sol::make_object(s, *(int32_t*)address);
+            case "i64"_fnv:
+                return sol::make_object(s, *(int64_t*)address);
+            case "f32"_fnv:
+                return sol::make_object(s, *(float*)address);
+            case "f64"_fnv:
+                return sol::make_object(s, *(double*)address);
+            case "utf8*"_fnv:
+                return sol::make_object(s, (const char*)address);
+            default:
+                continue;
+        }
+    }
+
+    return sol::make_object(s, sol::nil);
+}
+}
+
 #define GENNY_OBJECT_GEN(luaname, cppname) \
     "is_" #luaname, [](genny::Object& o) { return o.is_a<cppname>(); }, \
     "as_" #luaname, [](genny::Object& o) -> cppname* { return o.is_a<cppname>() ? dynamic_cast<cppname*>(&o) : nullptr; }, \
@@ -44,6 +211,14 @@ int open(lua_State* l) {
     sol::state_view lua{l};
 
     auto sdkgenny = lua.create_table();
+
+    sdkgenny.new_usertype<api::StructOverlay>("StructOverlay",
+    sol::meta_function::construct, sol::constructors<api::StructOverlay(uintptr_t, genny::Struct*)>(),
+        "type", &api::StructOverlay::type_,
+        "address", &api::StructOverlay::address,
+        sol::meta_function::index, &api::StructOverlay::index
+    );
+
     auto sdk = sdkgenny.new_usertype<genny::Sdk>("Sdk",
         "global_ns", &genny::Sdk::global_ns,
         "preamble", &genny::Sdk::preamble,
