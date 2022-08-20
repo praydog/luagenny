@@ -82,13 +82,15 @@ int open(lua_State* l) {
         GENNY_OBJECT_GEN(constant, genny::Constant)
     );
 
+    #define GENNY_TYPENAME_BASES genny::Typename, genny::Object
     sdkgenny.new_usertype<genny::Typename>("Typename",
         sol::base_classes, sol::bases<genny::Object>(),
         MULTIFUNCTION(genny::Typename, simple_typename_generation, bool)
     );
 
+    #define GENNY_TYPE_BASES genny::Type, genny::Typename, genny::Object
     sdkgenny.new_usertype<genny::Type>("Type",
-        sol::base_classes, sol::bases<genny::Typename>(),
+        sol::base_classes, sol::bases<GENNY_TYPENAME_BASES>(),
         MULTIFUNCTION(genny::Type, size, int),
         "ref", &genny::Type::ref,
         "ptr", &genny::Type::ptr,
@@ -96,20 +98,30 @@ int open(lua_State* l) {
     );
 
     sdkgenny.new_usertype<genny::GenericType>("GenericType",
-        sol::base_classes, sol::bases<genny::Type>()
+        sol::base_classes, sol::bases<GENNY_TYPE_BASES>()
     );
 
     sdkgenny.new_usertype<genny::Struct>("Struct",
-        sol::base_classes, sol::bases<genny::Type>(),
-        MULTIFUNCTION(genny::Struct, size, int)
+        sol::base_classes, sol::bases<GENNY_TYPE_BASES>(),
+        MULTIFUNCTION(genny::Struct, size, int),
+        "variable", &genny::Struct::variable,
+        "constant", &genny::Struct::constant,
+        "struct", &genny::Struct::struct_,
+        "class", &genny::Struct::class_,
+        "enum", &genny::Struct::enum_,
+        "enum_class", &genny::Struct::enum_class,
+        "function", &genny::Struct::function,
+        "virtual_function", &genny::Struct::virtual_function,
+        "static_function", &genny::Struct::static_function,
+        "bitfield", &genny::Struct::bitfield
     );
 
     sdkgenny.new_usertype<genny::Class>("Class",
-        sol::base_classes, sol::bases<genny::Struct>()
+        sol::base_classes, sol::bases<genny::Struct, GENNY_TYPE_BASES>()
     );
 
     sdkgenny.new_usertype<genny::Enum>("Enum",
-        sol::base_classes, sol::bases<genny::Type>(),
+        sol::base_classes, sol::bases<GENNY_TYPE_BASES>(),
         "value", [] (genny::Enum& e, std::string name, uint64_t value) {
             e.value(name, value);
         },
@@ -120,11 +132,11 @@ int open(lua_State* l) {
     );
 
     sdkgenny.new_usertype<genny::EnumClass>("EnumClass",
-        sol::base_classes, sol::bases<genny::Enum>()
+        sol::base_classes, sol::bases<genny::Enum, GENNY_TYPE_BASES>()
     );
 
     sdkgenny.new_usertype<genny::Namespace>("Namespace",
-        sol::base_classes, sol::bases<genny::Typename>(),
+        sol::base_classes, sol::bases<GENNY_TYPENAME_BASES>(),
         "type", &genny::Namespace::type,
         "generic_type", &genny::Namespace::generic_type,
         "struct", &genny::Namespace::struct_,
@@ -133,13 +145,14 @@ int open(lua_State* l) {
         "namespace", &genny::Namespace::namespace_
     );
 
+    #define GENNY_REFERENCE_BASES genny::Reference, GENNY_TYPE_BASES
     sdkgenny.new_usertype<genny::Reference>("Reference",
-        sol::base_classes, sol::bases<genny::Type>(),
+        sol::base_classes, sol::bases<GENNY_TYPE_BASES>(),
         MULTIFUNCTION(genny::Reference, to, genny::Type*)
     );
 
     sdkgenny.new_usertype<genny::Pointer>("Pointer",
-        sol::base_classes, sol::bases<genny::Reference>()
+        sol::base_classes, sol::bases<GENNY_REFERENCE_BASES>()
     );
 
     sdkgenny.new_usertype<genny::Variable>("Variable",
@@ -166,16 +179,16 @@ int open(lua_State* l) {
     );
 
     sdkgenny.new_usertype<genny::VirtualFunction>("VirtualFunction",
-        sol::base_classes, sol::bases<genny::Function>(),
+        sol::base_classes, sol::bases<genny::Function, genny::Object>(),
         MULTIFUNCTION(genny::VirtualFunction, vtable_index, int)
     );
 
     sdkgenny.new_usertype<genny::StaticFunction>("StaticFunction",
-        sol::base_classes, sol::bases<genny::Function>()
+        sol::base_classes, sol::bases<genny::Function, genny::Object>()
     );
 
     sdkgenny.new_usertype<genny::Array>("Array",
-        sol::base_classes, sol::bases<genny::Type>(),
+        sol::base_classes, sol::bases<GENNY_TYPE_BASES>(),
         MULTIFUNCTION(genny::Array, of, genny::Type*),
         MULTIFUNCTION(genny::Array, count, int)
     );
