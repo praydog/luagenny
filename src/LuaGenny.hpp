@@ -2,6 +2,6 @@
 
 struct lua_State;
 
-namespace sdkgennylua {
+namespace luagenny {
 int open(lua_State* l);
-} // namespace sdkgennylua
+} // namespace luagenny

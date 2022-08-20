@@ -9,7 +9,7 @@ extern "C" {
 
 #include "LuaGenny.hpp"
 
-namespace sdkgennylua {
+namespace luagenny {
 #define GENNY_OBJECT_GEN(luaname, cppname) \
     "is_" #luaname, [](genny::Object& o) { return o.is_a<cppname>(); }, \
     "as_" #luaname, [](genny::Object& o) -> cppname* { return o.is_a<cppname>() ? dynamic_cast<cppname*>(&o) : nullptr; }, \

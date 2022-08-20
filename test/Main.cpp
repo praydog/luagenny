@@ -215,7 +215,7 @@ int main() {
     sol::lib::utf8, sol::lib::os, sol::lib::coroutine);
 
     // Add the sdkgenny bindings
-    sdkgennylua::open(lua);
+    luagenny::open(lua);
     sol::table sdkgenny = sol::stack::pop<sol::table>(lua);
     lua["sdkgenny"] = sdkgenny;
 
@@ -268,29 +268,28 @@ int main() {
     std::cout << "0x" << std::hex << (uintptr_t)baz << std::endl;
     std::string input{};
 
-	while (true) {
-		std::cout << "> ";
-		std::getline(std::cin, input);
+    while (true) {
+        std::cout << "> ";
+        std::getline(std::cin, input);
 
-		const auto command = input.c_str();
+        const auto command = input.c_str();
 
-		if (input == "quit") {
-			break;
-		} else {
-			auto result = luaL_loadbuffer(lua, command, strlen(command), nullptr);
+        if (input == "quit") {
+            break;
+        } else {
+            auto result = luaL_loadbuffer(lua, command, strlen(command), nullptr);
 
-			if (result == LUA_OK) {
-				result = lua_pcall(lua, 0, LUA_MULTRET, 0);
+            if (result == LUA_OK) {
+                result = lua_pcall(lua, 0, LUA_MULTRET, 0);
 
-				if (result != LUA_OK)
-				{
-					std::cout << "ERROR: " << luaL_checkstring(lua, -1) << std::endl;
-				}
-			} else {
-				std::cout << "ERROR: " << luaL_checkstring(lua, -1) << std::endl;
-			}
-		}
-	}
+                if (result != LUA_OK) {
+                    std::cout << "ERROR: " << luaL_checkstring(lua, -1) << std::endl;
+                }
+            } else {
+                std::cout << "ERROR: " << luaL_checkstring(lua, -1) << std::endl;
+            }
+        }
+    }
 
     std::cout << "Press ENTER to exit.";
     std::cin.get();
