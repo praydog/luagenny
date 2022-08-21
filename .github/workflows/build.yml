@@ -18,7 +18,7 @@ jobs:
 
       - name: Build
         run: |
-          cmake -B build-${{matrix.arch}} -A ${{matrix.arch}} -DCMAKE_BUILD_TYPE=Release -DCMAKE_UNITY_BUILD=ON -DVCPKG_TARGET_TRIPLET=${{matrix.triplet}}
+          cmake -B build-${{matrix.arch}} -A ${{matrix.arch}} -DCMAKE_BUILD_TYPE=Release -DVCPKG_TARGET_TRIPLET=${{matrix.triplet}}
           cmake --build build-${{matrix.arch}} --config Release --parallel
           cmake --install build-${{matrix.arch}} --prefix ./install-${{matrix.arch}} --config Release
 
