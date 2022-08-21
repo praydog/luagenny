@@ -220,6 +220,7 @@ int main() {
     lua["sdkgenny"] = sdkgenny;
 
     auto sdk = parse_gennyfile();
+    lua["parsed"] = sdk.get();
 
     auto foo = new Foo{};
     foo->a = 42;
@@ -263,7 +264,7 @@ int main() {
     baz->rtti = rtti;
     baz->e_ptr = new E{};
 
-    lua["parsed"] = sdk.get();
+    lua["bazaddr"] = (uintptr_t)baz;
 
     std::cout << "0x" << std::hex << (uintptr_t)baz << std::endl;
     std::string input{};

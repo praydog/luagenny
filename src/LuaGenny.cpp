@@ -1,5 +1,6 @@
 #include <vector>
 #include <fstream>
+#include <bit>
 
 extern "C" {
 #include <lua.h>
@@ -31,6 +32,25 @@ constexpr auto operator "" _fnv(const char* s, size_t) {
 
 namespace api {
 sol::object standalone_parse(sol::this_state s, uintptr_t address, genny::Type* t, genny::Variable* v = nullptr);
+
+sol::object reader(sol::this_state s, uintptr_t address, size_t size) {
+    switch(size) {
+    case 8:
+        return sol::make_object(s, *(uint64_t*)address);
+    case 4:
+        return sol::make_object(s, *(uint32_t*)address);
+    case 2:
+        return sol::make_object(s, *(uint16_t*)address);
+    case 1:
+        return sol::make_object(s, *(uint8_t*)address);
+    }
+    
+    return sol::make_object(s, sol::nil);
+}
+
+sol::object string_reader(sol::this_state s, uintptr_t address) {
+    return sol::make_object(s, (const char*)address);
+}
 
 template<typename T>
 class Overlay {
@@ -144,32 +164,35 @@ sol::object standalone_parse(sol::this_state s, uintptr_t address, genny::Type* 
         return sol::make_object(s, sol::nil);
     }
 
+    sol::function lua_reader = sol::state_view{s}["sdkgenny_reader"];
+    sol::function lua_string_reader = sol::state_view{s}["sdkgenny_string_reader"];
+
     for (auto&& md : metadata) {
         switch (hash(md)) {
             case "bool"_fnv:
-                return sol::make_object(s, *(bool*)address);
+                return sol::make_object(s, (bool)lua_reader(s, address, 1).get<uint8_t>());
             case "u8"_fnv:
-                return sol::make_object(s, *(uint8_t*)address);
+                return sol::make_object(s, (uint8_t)lua_reader(s, address, 1).get<uint8_t>());
             case "u16"_fnv:
-                return sol::make_object(s, *(uint16_t*)address);
+                return sol::make_object(s, (uint16_t)lua_reader(s, address, 2).get<uint16_t>());
             case "u32"_fnv:
-                return sol::make_object(s, *(uint32_t*)address);
+                return sol::make_object(s, (uint32_t)lua_reader(s, address, 4).get<uint32_t>());
             case "u64"_fnv:
-                return sol::make_object(s, *(uint64_t*)address);
+                return sol::make_object(s, (uint64_t)lua_reader(s, address, 8).get<uint64_t>());
             case "i8"_fnv:
-                return sol::make_object(s, *(int8_t*)address);
+                return sol::make_object(s, (int8_t)lua_reader(s, address, 1).get<uint8_t>());
             case "i16"_fnv:
-                return sol::make_object(s, *(int16_t*)address);
+                return sol::make_object(s, (int16_t)lua_reader(s, address, 2).get<uint16_t>());
             case "i32"_fnv:
-                return sol::make_object(s, *(int32_t*)address);
+                return sol::make_object(s, (int32_t)lua_reader(s, address, 4).get<uint32_t>());
             case "i64"_fnv:
-                return sol::make_object(s, *(int64_t*)address);
+                return sol::make_object(s, (int64_t)lua_reader(s, address, 8).get<uint64_t>());
             case "f32"_fnv:
-                return sol::make_object(s, *(float*)address);
+                return sol::make_object(s, std::bit_cast<float>(lua_reader(s, address, 4).get<uint32_t>()));
             case "f64"_fnv:
-                return sol::make_object(s, *(double*)address);
+                return sol::make_object(s, std::bit_cast<double>(lua_reader(s, address, 8).get<uint64_t>()));
             case "utf8*"_fnv:
-                return sol::make_object(s, (const char*)address);
+                return sol::make_object(s, lua_string_reader(s, address, 1).get<const char*>());
             default:
                 continue;
         }
@@ -232,6 +255,8 @@ int open(lua_State* l) {
 
     auto sdkgenny = lua.create_table();
 
+    lua["sdkgenny_reader"] = &api::reader;
+    lua["sdkgenny_string_reader"] = &api::string_reader;
     sdkgenny["parse"] = &api::parse;
     sdkgenny["parse_file"] = &api::parse_file;
 
