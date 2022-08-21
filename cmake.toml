@@ -35,11 +35,8 @@ link-libraries = [
     "sol2::sol2",
     "sdkgenny"
 ]
-compile-features = ["cxx_std_17"]
+compile-features = ["cxx_std_20"]
 compile-options = ["/bigobj"]
-
-[target.sdkgenny-lua.properties]
-static.MSVC_RUNTIME_LIBRARY = "MultiThreaded$<$<CONFIG:Debug>:Debug>"
 
 [target.test]
 type = "executable"
@@ -53,7 +50,4 @@ link-libraries = [
     "sdkgenny-lua",
     "sdkgenny"
 ]
-compile-features = ["cxx_std_17"]
-
-[target.test.properties]
-static.MSVC_RUNTIME_LIBRARY = "MultiThreaded$<$<CONFIG:Debug>:Debug>"
+compile-features = ["cxx_std_20"]

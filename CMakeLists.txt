@@ -82,7 +82,7 @@ endif()
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${sdkgenny-lua_SOURCES})
 
 target_compile_features(sdkgenny-lua PUBLIC
-	cxx_std_17
+	cxx_std_20
 )
 
 target_compile_options(sdkgenny-lua PUBLIC
@@ -94,13 +94,6 @@ target_link_libraries(sdkgenny-lua PUBLIC
 	sol2::sol2
 	sdkgenny
 )
-
-if(${VCPKG_TARGET_TRIPLET} MATCHES ".+static") # static
-	set_target_properties(sdkgenny-lua PROPERTIES
-		MSVC_RUNTIME_LIBRARY
-			"MultiThreaded$<$<CONFIG:Debug>:Debug>"
-	)
-endif()
 
 unset(CMKR_TARGET)
 unset(CMKR_SOURCES)
@@ -132,7 +125,7 @@ endif()
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${test_SOURCES})
 
 target_compile_features(test PRIVATE
-	cxx_std_17
+	cxx_std_20
 )
 
 target_include_directories(test PRIVATE
@@ -145,13 +138,6 @@ target_link_libraries(test PRIVATE
 	sdkgenny-lua
 	sdkgenny
 )
-
-if(${VCPKG_TARGET_TRIPLET} MATCHES ".+static") # static
-	set_target_properties(test PROPERTIES
-		MSVC_RUNTIME_LIBRARY
-			"MultiThreaded$<$<CONFIG:Debug>:Debug>"
-	)
-endif()
 
 unset(CMKR_TARGET)
 unset(CMKR_SOURCES)
