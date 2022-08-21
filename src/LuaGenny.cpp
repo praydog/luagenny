@@ -1,4 +1,5 @@
 #include <vector>
+#include <fstream>
 
 extern "C" {
 #include <lua.h>
@@ -8,6 +9,7 @@ extern "C" {
 #include <sol/sol.hpp>
 
 #include <Genny.hpp>
+#include <GennyParser.hpp>
 
 #include "LuaGenny.hpp"
 
@@ -175,6 +177,24 @@ sol::object standalone_parse(sol::this_state s, uintptr_t address, genny::Type* 
 
     return sol::make_object(s, sol::nil);
 }
+
+sol::object parse(sol::this_state s, std::string data) {
+    auto sdk = std::make_unique<genny::Sdk>();
+
+    genny::parser::State state{};
+    state.parents.push_back(sdk->global_ns());
+
+    tao::pegtl::memory_input in{data, "text"};
+    tao::pegtl::parse<genny::parser::Grammar, genny::parser::Action>(in, state);
+
+    return sol::make_object(s, std::move(sdk));
+}
+
+sol::object parse_file(sol::this_state s, std::string filename) {
+    std::ifstream file{filename};
+    std::string data{(std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>()};
+    return parse(s, data);
+}
 }
 
 #define GENNY_OBJECT_GEN(luaname, cppname) \
@@ -211,6 +231,9 @@ int open(lua_State* l) {
     sol::state_view lua{l};
 
     auto sdkgenny = lua.create_table();
+
+    sdkgenny["parse"] = &api::parse;
+    sdkgenny["parse_file"] = &api::parse_file;
 
     sdkgenny.new_usertype<api::StructOverlay>("StructOverlay",
     sol::meta_function::construct, sol::constructors<api::StructOverlay(uintptr_t, genny::Struct*)>(),
