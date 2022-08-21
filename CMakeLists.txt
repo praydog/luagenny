@@ -115,7 +115,7 @@ target_compile_features(luagenny PUBLIC
 )
 
 target_compile_options(luagenny PUBLIC
-	"/bigobj /Zm500"
+	"/bigobj"
 )
 
 target_link_libraries(luagenny PUBLIC
