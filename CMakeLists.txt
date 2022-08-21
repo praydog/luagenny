@@ -28,7 +28,7 @@ if(CMKR_ROOT_PROJECT)
 endif()
 
 
-project(sdkgenny-lua)
+project(luagenny)
 
 if(CMKR_ROOT_PROJECT AND NOT CMKR_DISABLE_VCPKG)
 	include(FetchContent)
@@ -59,37 +59,37 @@ find_package(lua)
 
 find_package(sol2)
 
-# Target sdkgenny-lua
-set(CMKR_TARGET sdkgenny-lua)
-set(sdkgenny-lua_SOURCES "")
+# Target luagenny
+set(CMKR_TARGET luagenny)
+set(luagenny_SOURCES "")
 
-list(APPEND sdkgenny-lua_SOURCES
+list(APPEND luagenny_SOURCES
 	"src/LuaGenny.cpp"
 	"src/LuaGenny.hpp"
 )
 
-list(APPEND sdkgenny-lua_SOURCES
+list(APPEND luagenny_SOURCES
 	cmake.toml
 )
 
-set(CMKR_SOURCES ${sdkgenny-lua_SOURCES})
-add_library(sdkgenny-lua STATIC)
+set(CMKR_SOURCES ${luagenny_SOURCES})
+add_library(luagenny STATIC)
 
-if(sdkgenny-lua_SOURCES)
-	target_sources(sdkgenny-lua PRIVATE ${sdkgenny-lua_SOURCES})
+if(luagenny_SOURCES)
+	target_sources(luagenny PRIVATE ${luagenny_SOURCES})
 endif()
 
-source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${sdkgenny-lua_SOURCES})
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${luagenny_SOURCES})
 
-target_compile_features(sdkgenny-lua PUBLIC
+target_compile_features(luagenny PUBLIC
 	cxx_std_20
 )
 
-target_compile_options(sdkgenny-lua PUBLIC
+target_compile_options(luagenny PUBLIC
 	"/bigobj"
 )
 
-target_link_libraries(sdkgenny-lua PUBLIC
+target_link_libraries(luagenny PUBLIC
 	lua
 	sol2::sol2
 	sdkgenny
@@ -135,10 +135,19 @@ target_include_directories(test PRIVATE
 target_link_libraries(test PRIVATE
 	lua
 	sol2::sol2
-	sdkgenny-lua
+	luagenny
 	sdkgenny
 )
 
 unset(CMKR_TARGET)
 unset(CMKR_SOURCES)
 
+install(
+	TARGETS
+		luagenny
+		test
+	DESTINATION
+		bin
+	COMPONENT
+		luagenny
+)

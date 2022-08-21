@@ -1,5 +1,5 @@
 [project]
-name = "sdkgenny-lua"
+name = "luagenny"
 cmake-before = """
 """
 
@@ -24,7 +24,7 @@ sol2 = { required = false }
 [conditions]
 static = "${VCPKG_TARGET_TRIPLET} MATCHES \".+static\""
 
-[target.sdkgenny-lua]
+[target.luagenny]
 type = "static"
 sources = [
     "src/**.cpp",
@@ -47,7 +47,11 @@ include-directories = [
 link-libraries = [
     "lua",
     "sol2::sol2",
-    "sdkgenny-lua",
+    "luagenny",
     "sdkgenny"
 ]
 compile-features = ["cxx_std_20"]
+
+[[install]]
+targets = ["luagenny", "test"]
+destination = "bin"
