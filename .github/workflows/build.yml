@@ -8,9 +8,9 @@ jobs:
         arch: [x64, Win32]
         include:
           - arch: x64
-            triplet: x64-windows-static
+            triplet: x64-windows
           - arch: Win32
-            triplet: x86-windows-static
+            triplet: x86-windows
 
     steps:
       - name: Checkout
