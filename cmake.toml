@@ -36,7 +36,7 @@ link-libraries = [
     "sdkgenny"
 ]
 compile-features = ["cxx_std_20"]
-compile-options = ["/bigobj"]
+compile-options = ["/bigobj /Zm500"]
 
 [target.test]
 type = "executable"
