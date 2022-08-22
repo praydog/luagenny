@@ -124,6 +124,8 @@ function do_tests()
         table.insert(results, value_expect(baz.f[i], i, "baz.f[" .. tostring(i) .. "]"))
     end
 
+    table.insert(results, value_expect(baz.f:deref() == baz.f[0], true, "baz.f:deref() == baz.f[0]"))
+
     local known_variables = bazstruct:get_all("variable")
     local known_variables2 = bazstruct:get_all_variable()
 

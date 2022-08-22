@@ -205,8 +205,8 @@ public:
         return sol::make_object(s, sol::nil);
     }
     
-    // Dereference.
-    sol::object p(sol::this_state s) const {
+    // Address pointed to, not address of pointer
+    sol::object d(sol::this_state s) const {
         const auto pointed_to = ptr_internal(s);
 
         if (pointed_to == 0) {
@@ -357,10 +357,13 @@ int open(lua_State* l) {
         sol::meta_function::construct, sol::constructors<api::PointerOverlay(uintptr_t, genny::Pointer*)>(),
         sol::call_constructor, sol::constructors<api::PointerOverlay(uintptr_t, genny::Pointer*)>(),
         "type", &api::PointerOverlay::type_,
-        "address", &api::PointerOverlay::address, // address of the pointer, not what it points to
-        "p", &api::PointerOverlay::ptr, // address pointed to.
-        "ptr", &api::PointerOverlay::ptr,
-        sol::meta_function::index, &api::PointerOverlay::index
+        "address", &api::PointerOverlay::address, // address of the pointer, not what it points to. Same as &ptr.
+        "d", &api::PointerOverlay::d, // Resolve the pointed to address into a pointer or value. Same as ptr[0].
+        "deref", &api::PointerOverlay::d, // Resolve the pointed to address into a pointer or value. Same as ptr[0].
+        "dereference", &api::PointerOverlay::d, // Resolve the pointed to address into a pointer or value. Same as ptr[0].
+        "p", &api::PointerOverlay::ptr, // address pointed to, like auto var = (uintptr_t)ptr.
+        "ptr", &api::PointerOverlay::ptr, // address pointed to, like auto var = (uintptr_t)ptr.
+        sol::meta_function::index, &api::PointerOverlay::index // Access like ptr->field in C++ or an array, like ptr[i]
     );
 
     sdkgenny.push();
