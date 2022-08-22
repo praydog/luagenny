@@ -74,8 +74,8 @@ function do_tests()
         value_expect(baz.ta.hours, 40, "baz.ta.hours"),
         value_expect(bazstruct:find("variable", "e") ~= nil, true, "bazstruct:find(\"variable\", \"e\") ~= nil"),
         value_expect(bazstruct:find("variable", "e"):is_a("variable"), true, "bazstruct:find(\"variable\", \"e\"):is_a(\"variable\")"),
-        value_expect(bazstruct:find("variable", "e"):is_a("class"), false, "bazstruct:find(\"variable\", \"e\"):is_a(\"type\")"),
-        value_expect(bazstruct:find("variable", "e"):is_a("struct"), false, "bazstruct:find(\"variable\", \"e\"):is_a(\"type\")"),
+        value_expect(bazstruct:find("variable", "e"):is_a("class"), false, "bazstruct:find(\"variable\", \"e\"):is_a(\"class\")"),
+        value_expect(bazstruct:find("variable", "e"):is_a("struct"), false, "bazstruct:find(\"variable\", \"e\"):is_a(\"struct\")"),
         value_expect(bazstruct:find("variable", "e"):is_a("type"), false, "bazstruct:find(\"variable\", \"e\"):is_a(\"type\")"),
         value_expect(bazstruct:find("variable", "not_real_var") == nil, true, "bazstruct:find(\"variable\", \"not_real_var\") == nil"),
         
