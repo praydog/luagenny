@@ -30,7 +30,8 @@ local function testcompare(x, name)
         "constant"
     }
     ) do
-        print(tostring(name or x) .. " == " .. tostring(v) .. ": " .. tostring(x:is_a(v)))
+        print(tostring(name or x) .. " == " .. tostring(v) .. ": " .. tostring(x["is_"..v](x)))
+        --print(tostring(name or x) .. " == " .. tostring(v) .. ": " .. tostring(x:is_a(v)))
     end
 end
 
@@ -114,6 +115,13 @@ function do_tests()
 
     for i=0, 10-1 do
         table.insert(results, value_expect(baz.things[i].abc, i * 2, "baz.things[" .. tostring(i) .. "].abc"))
+    end
+
+    table.insert(results, value_expect(baz.f:type():name(), "int*", "baz.f:type():name()"))
+    table.insert(results, value_expect(baz.f:type():to():name(), "int", "baz.f:type():to():name()"))
+
+    for i=0, 10-1 do
+        table.insert(results, value_expect(baz.f[i], i, "baz.f[" .. tostring(i) .. "]"))
     end
 
     local known_variables = bazstruct:get_all("variable")

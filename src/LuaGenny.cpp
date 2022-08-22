@@ -178,6 +178,65 @@ protected:
     }
 };
 
+class PointerOverlay : public Overlay<genny::Pointer> {
+public:
+    PointerOverlay(uintptr_t address, genny::Pointer* p, genny::Variable* from = nullptr) 
+        : Overlay(address, p),
+        m_from{from}
+    {
+    }
+
+    sol::object index(sol::this_state s, sol::object key) override {
+        const auto pointed_to = ptr_internal(s);
+
+        if (pointed_to == 0) {
+            return sol::make_object(s, sol::nil);
+        }
+
+        if (m_type->to()->is_a<genny::Struct>()) {
+            return StructOverlay{pointed_to, dynamic_cast<genny::Struct*>(m_type->to())}.index(s, key);
+        }
+
+        if (key.is<int>()) {
+            const auto adjusted_to = pointed_to + (m_type->to()->size() * key.as<int>());
+            return sol::make_object(s, standalone_parse(s, adjusted_to, m_type->to(), m_from));
+        }
+
+        return sol::make_object(s, sol::nil);
+    }
+    
+    // Dereference.
+    sol::object p(sol::this_state s) const {
+        const auto pointed_to = ptr_internal(s);
+
+        if (pointed_to == 0) {
+            return sol::make_object(s, sol::nil);
+        }
+
+        return sol::make_object(s, standalone_parse(s, pointed_to, m_type->to(), m_from));
+    }
+
+    uintptr_t ptr(sol::this_state s) const {
+        return ptr_internal(s);
+    }
+
+protected:
+    uintptr_t ptr_internal(sol::this_state s) const {
+        sol::function lua_reader = sol::state_view{s}["sdkgenny_reader"];
+        uintptr_t deref_address = 0;
+
+        if constexpr (sizeof(void*) == 8) {
+            deref_address = (uintptr_t)lua_reader(s, m_address, sizeof(void*)).get<uint64_t>();
+        } else {
+            deref_address = (uintptr_t)lua_reader(s, m_address, sizeof(void*)).get<uint32_t>();
+        }
+
+        return deref_address;
+    }
+
+    genny::Variable* m_from{};
+};
+
 sol::object standalone_parse(sol::this_state s, uintptr_t address, genny::Type* t, genny::Variable* v) {
     if (t == nullptr) {
         return sol::make_object(s, address);
@@ -196,34 +255,32 @@ sol::object standalone_parse(sol::this_state s, uintptr_t address, genny::Type* 
         metadata = v->metadata();
     }
 
+    sol::function lua_reader = sol::state_view{s}["sdkgenny_reader"];
+    sol::function lua_string_reader = sol::state_view{s}["sdkgenny_string_reader"];
+
     if (is_pointer) {
-        address = *reinterpret_cast<uintptr_t*>(address);
+        const auto p = dynamic_cast<genny::Pointer*>(t);
+        const auto to = p->to();
+
+        if (to->is_a<genny::Struct>() || to->is_a<genny::Pointer>() || metadata.empty()) {
+            return sol::make_object(s, PointerOverlay{address, p, v});
+        }
+
+        address = lua_reader(s, address, sizeof(void*)).get<uintptr_t>();
 
         if (address == 0) {
             return sol::make_object(s, sol::nil);
         }
 
-        pointer_t = dynamic_cast<genny::Pointer*>(t)->to();
-
-        if (pointer_t->is_a<genny::Pointer>()) {
-            return standalone_parse(s, address, pointer_t);
+        if (metadata.empty()) {
+            metadata = to->metadata();
         }
-
-        if (pointer_t->is_a<genny::Struct>()) {
-            return sol::make_object(s, StructOverlay{address, dynamic_cast<genny::Struct*>(pointer_t)});
-        }
-
-        //metadata = pointer_t->metadata();
     }
-
 
     if (metadata.empty()){
         throw std::runtime_error("No metadata for type");
         return sol::make_object(s, sol::nil);
     }
-
-    sol::function lua_reader = sol::state_view{s}["sdkgenny_reader"];
-    sol::function lua_string_reader = sol::state_view{s}["sdkgenny_string_reader"];
 
     for (auto&& md : metadata) {
         switch (hash(md)) {
@@ -294,6 +351,16 @@ int open(lua_State* l) {
         "type", &api::StructOverlay::type_,
         "address", &api::StructOverlay::address,
         sol::meta_function::index, &api::StructOverlay::index
+    );
+
+    sdkgenny.new_usertype<api::PointerOverlay>("PointerOverlay",
+        sol::meta_function::construct, sol::constructors<api::PointerOverlay(uintptr_t, genny::Pointer*)>(),
+        sol::call_constructor, sol::constructors<api::PointerOverlay(uintptr_t, genny::Pointer*)>(),
+        "type", &api::PointerOverlay::type_,
+        "address", &api::PointerOverlay::address, // address of the pointer, not what it points to
+        "p", &api::PointerOverlay::ptr, // address pointed to.
+        "ptr", &api::PointerOverlay::ptr,
+        sol::meta_function::index, &api::PointerOverlay::index
     );
 
     sdkgenny.push();
