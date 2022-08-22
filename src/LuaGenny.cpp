@@ -289,7 +289,8 @@ int open(lua_State* l) {
     sdkgenny["parse_file"] = &api::parse_file;
 
     sdkgenny.new_usertype<api::StructOverlay>("StructOverlay",
-    sol::meta_function::construct, sol::constructors<api::StructOverlay(uintptr_t, genny::Struct*)>(),
+        sol::meta_function::construct, sol::constructors<api::StructOverlay(uintptr_t, genny::Struct*)>(),
+        sol::call_constructor, sol::constructors<api::StructOverlay(uintptr_t, genny::Struct*)>(),
         "type", &api::StructOverlay::type_,
         "address", &api::StructOverlay::address,
         sol::meta_function::index, &api::StructOverlay::index

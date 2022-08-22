@@ -5,26 +5,26 @@ Lua bindings for [sdkgenny](https://github.com/cursey/sdkgenny)
 ```
 PS F:\Programming\projects\sdkgenny-lua\build\Debug> .\test.exe
 0x223aa80d010
-> baz = sdkgenny.StructOverlay.new(0x223aa80d010, parsed:global_ns():struct("Baz")) 
-> print(tostring(baz.things:address()))
+> baz = sdkgenny.StructOverlay(0x223aa80d010, parsed:global_ns():struct("Baz")) 
+> print(baz.things:address())
 2352207548688
-> print(tostring(baz.things[0]))        
+> print(baz.things[0])
 sol.luagenny::api::StructOverlay: 00000223AA7D8338
-> print(tostring(baz.things[0].abc)) 
+> print(baz.things[0].abc)
 0
-> print(tostring(baz.things[1].abc))
+> print(baz.things[1].abc)
 2
-> print(tostring(baz.things[2].abc))
+> print(baz.things[2].abc)
 4
-> print(tostring(baz.hello))
+> print(baz.hello)
 Hello, world!
-> print(tostring(baz.im_true))
+> print(baz.im_true)
 true
-> print(tostring(baz.im_false))
+> print(baz.im_false)
 false
-> print(tostring(baz.im_also_true))
+> print(baz.im_also_true)
 true
-> print(tostring(baz.ta.hours))     
+> print(baz.ta.hours)
 40
 ```
 

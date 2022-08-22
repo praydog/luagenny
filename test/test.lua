@@ -1,6 +1,6 @@
 local test_start = os.clock()
 
-baz = sdkgenny.StructOverlay.new(bazaddr, parsed:global_ns():find("struct", "Baz"))
+baz = sdkgenny.StructOverlay(bazaddr, parsed:global_ns():find("struct", "Baz"))
 print(baz)
 print(baz:type())
 print(string.format("%x", baz:address()))
