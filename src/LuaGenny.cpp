@@ -220,6 +220,8 @@ sol::object standalone_parse(sol::this_state s, uintptr_t address, genny::Type* 
 sol::object parse(sol::this_state s, std::string data) {
     auto sdk = std::make_unique<genny::Sdk>();
 
+    volatile auto fake = tao::pegtl::demangle<int>();
+
     genny::parser::State state{};
     state.parents.push_back(sdk->global_ns());
 
