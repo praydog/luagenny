@@ -68,6 +68,7 @@ function do_tests()
         value_expect(round(baz.g.c, 1), 78.7, "round(baz.g.c)"),
         value_expect(baz.hello, "Hello, world!", "baz.hello"),
         value_expect(baz.e, 666, "baz.e"),
+        value_expect(baz.ta.age, 20, "baz.ta.age"),
         value_expect(round(baz.ta.gpa, 1), 3.9, "baz.ta.gpa"),
         value_expect(baz.ta.wage, 30000, "baz.ta.wage"),
         value_expect(baz.ta.hours, 40, "baz.ta.hours"),

@@ -84,6 +84,28 @@ sol::object string_reader(sol::this_state s, uintptr_t address) {
     return sol::make_object(s, (const char*)address);
 }
 
+std::optional<std::tuple<genny::Variable*, size_t>> get_variable(genny::Struct* s, const std::string& name, size_t additional_offset = 0) {
+    auto v = s->find<genny::Variable>(name);
+
+    if (v != nullptr) {
+        return std::make_tuple(v, additional_offset);
+    }
+
+    const auto& parents = s->parents();
+
+    for (auto parent : parents) {
+        auto v = get_variable(parent, name, additional_offset);
+
+        if (v) {
+            return v;
+        }
+
+        additional_offset += parent->size();
+    }
+
+    return std::nullopt;
+}
+
 template<typename T>
 class Overlay {
 public:
@@ -126,23 +148,13 @@ public:
         }
 
         const auto name = key.as<std::string>();
-        auto v = m_type->find<genny::Variable>(name);
+        const auto pv = get_variable(m_type, name);
 
-        uint32_t additional_offset = 0;
-
-        if (v == nullptr) {
-            const auto& parents = m_type->parents();
-
-            for (auto parent : parents) {
-                v = parent->find<genny::Variable>(name);
-
-                if (v != nullptr) {
-                    break;
-                }
-
-                additional_offset += parent->size();
-            }
+        if (!pv) {
+            return sol::make_object(s, sol::nil);
         }
+
+        const auto& [v, additional_offset] = *pv;
 
         if (v == nullptr || v->type() == nullptr) {
             return sol::make_object(s, sol::nil);
@@ -152,7 +164,7 @@ public:
     }
 
 protected:
-    sol::object parse_and_read(sol::this_state s, genny::Variable* v, uint32_t additional_offset = 0) {
+    sol::object parse_and_read(sol::this_state s, genny::Variable* v, size_t additional_offset = 0) {
         const auto offset = v->offset();
 
         if (offset > m_type->size()) {
