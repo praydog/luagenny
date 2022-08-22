@@ -14,7 +14,8 @@ extern "C" {
 #undef _MSC_VER
 #define _MSC_VER 1919
 #include <tao/pegtl/demangle.hpp>
-#define _MSC_OLD_VER _MSC_VER
+#undef _MSC_VER
+#define _MSC_VER _MSC_OLD_VER
 #endif
 
 #include <Genny.hpp>
