@@ -16,8 +16,17 @@ int open_variable(lua_State* l) {
 
     sdkgenny.new_usertype<genny::Variable>("Variable",
         sol::base_classes, sol::bases<genny::Object>(),
-        MULTIFUNCTION(genny::Variable, type, genny::Type*),
-        PARAMFUNCTION(genny::Variable, type, std::string),
+        "type", [](sol::this_state s, genny::Variable& f, sol::object param) -> sol::object {
+            if (param.is<sol::nil_t>()) {
+                return sol::make_object(s, f.type());
+            }
+
+            if (param.is<std::string>()) {
+                return sol::make_object(s, f.type(param.as<std::string>()));
+            }
+
+            return sol::make_object(s, f.type(param.as<genny::Type*>()));
+        },
         MULTIFUNCTION(genny::Variable, offset, int),
         "append", &genny::Variable::append,
         "end", &genny::Variable::end,
