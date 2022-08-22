@@ -9,6 +9,14 @@ extern "C" {
 }
 #include <sol/sol.hpp>
 
+#if _MSC_VER == 1932 || _MSC_VER == 1933
+#define _MSC_OLD_VER _MSC_VER
+#undef _MSC_VER
+#define _MSC_VER 1919
+#include <tao/pegtl/demangle.hpp>
+#define _MSC_OLD_VER _MSC_VER
+#endif
+
 #include <Genny.hpp>
 #include <GennyParser.hpp>
 
@@ -219,8 +227,6 @@ sol::object standalone_parse(sol::this_state s, uintptr_t address, genny::Type* 
 
 sol::object parse(sol::this_state s, std::string data) {
     auto sdk = std::make_unique<genny::Sdk>();
-
-    volatile auto fake = tao::pegtl::demangle<int>();
 
     genny::parser::State state{};
     state.parents.push_back(sdk->global_ns());
