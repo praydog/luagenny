@@ -1,6 +1,6 @@
 local test_start = os.clock()
 
-baz = sdkgenny.StructOverlay(bazaddr, parsed:global_ns():find("struct", "Baz"))
+baz = sdkgenny.StructOverlay(bazaddr, parsed:global_ns():find_struct("Baz"))
 print(baz)
 print(baz:type())
 print(string.format("%x", baz:address()))
@@ -66,6 +66,8 @@ function do_tests()
         value_expect(bazstruct:name(), "Baz", "bazstruct:name()"),
         value_expect(bazstruct:is_a("struct"), true, "bazstruct:is_a(\"struct\")"),
         value_expect(bazstruct:is_a("type"), true, "bazstruct:is_a(\"type\")"),
+        value_expect(bazstruct:is_struct(), true, "bazstruct:is_struct()"),
+        value_expect(bazstruct:is_type(), true, "bazstruct:is_type()"),
         value_expect(baz.g.a, 43, "baz.g.a"),
         value_expect(baz.g.b, 1338, "baz.g.b"),
         value_expect(round(baz.g.c, 1), 78.7, "round(baz.g.c)"),
@@ -76,35 +78,55 @@ function do_tests()
         value_expect(baz.ta.wage, 30000, "baz.ta.wage"),
         value_expect(baz.ta.hours, 40, "baz.ta.hours"),
         value_expect(bazstruct:find("variable", "e") ~= nil, true, "bazstruct:find(\"variable\", \"e\") ~= nil"),
-        value_expect(bazstruct:find("variable", "e"):is_a("variable"), true, "bazstruct:find(\"variable\", \"e\"):is_a(\"variable\")"),
-        value_expect(bazstruct:find("variable", "e"):as("variable") ~= nil, true, "bazstruct:find(\"variable\", \"e\"):as(\"variable\") ~= nil"),
-        value_expect(bazstruct:find("variable", "e"):is_a("class"), false, "bazstruct:find(\"variable\", \"e\"):is_a(\"class\")"),
-        value_expect(bazstruct:find("variable", "e"):as("class") == nil, true, "bazstruct:find(\"variable\", \"e\"):as(\"class\") == nil"),
-        value_expect(bazstruct:find("variable", "e"):is_a("struct"), false, "bazstruct:find(\"variable\", \"e\"):is_a(\"struct\")"),
-        value_expect(bazstruct:find("variable", "e"):as("struct") == nil, true, "bazstruct:find(\"variable\", \"e\"):as(\"struct\") == nil"),
-        value_expect(bazstruct:find("variable", "e"):is_a("type"), false, "bazstruct:find(\"variable\", \"e\"):is_a(\"type\")"),
-        value_expect(bazstruct:find("variable", "e"):as("type") == nil, true, "bazstruct:find(\"variable\", \"e\"):as(\"type\") == nil"),
-        value_expect(bazstruct:find("variable", "e"):type() ~= nil, true, "bazstruct:find(\"variable\", \"e\"):type() ~= nil"),
-        value_expect(bazstruct:find("variable", "e"):type():is_a("type"), true, "bazstruct:find(\"variable\", \"e\"):type():is_a(\"type\")"),
-        value_expect(bazstruct:find("variable", "e"):type():name() == "int", true, "bazstruct:find(\"variable\", \"e\"):type():name() == \"int\""),
-        value_expect(bazstruct:find("variable", "e"):type():metadata()[1] == "i32", true, "bazstruct:find(\"variable\", \"e\"):type():metadata()[0] == \"i32\""),
-        value_expect(bazstruct:find("variable", "not_real_var") == nil, true, "bazstruct:find(\"variable\", \"not_real_var\") == nil"),
+        value_expect(bazstruct:find_variable("e") == bazstruct:find("variable", "e"), true, "bazstruct:find_variable(\"e\") == bazstruct:find(\"variable\", \"e\")"),
+        value_expect(bazstruct:find_variable("e"):is_a("variable"), true, "bazstruct:find(\"variable\", \"e\"):is_a(\"variable\")"),
+        value_expect(bazstruct:find_variable("e"):is_variable(), true, "bazstruct:find(\"variable\", \"e\"):is_variable()"),
+        value_expect(bazstruct:find_variable("e"):as("variable") ~= nil, true, "bazstruct:find(\"variable\", \"e\"):as(\"variable\") ~= nil"),
+        value_expect(bazstruct:find_variable("e"):as_variable() ~= nil, true, "bazstruct:find(\"variable\", \"e\"):as_variable() ~= nil"),
+        value_expect(bazstruct:find_variable("e"):is_a("class"), false, "bazstruct:find(\"variable\", \"e\"):is_a(\"class\")"),
+        value_expect(bazstruct:find_variable("e"):is_class(), false, "bazstruct:find(\"variable\", \"e\"):is_class()"),
+        value_expect(bazstruct:find_variable("e"):as("class") == nil, true, "bazstruct:find(\"variable\", \"e\"):as(\"class\") == nil"),
+        value_expect(bazstruct:find_variable("e"):as_class() == nil, true, "bazstruct:find(\"variable\", \"e\"):as_class() == nil"),
+        value_expect(bazstruct:find_variable("e"):is_a("struct"), false, "bazstruct:find(\"variable\", \"e\"):is_a(\"struct\")"),
+        value_expect(bazstruct:find_variable("e"):is_struct(), false, "bazstruct:find(\"variable\", \"e\"):is_struct()"),
+        value_expect(bazstruct:find_variable("e"):as("struct") == nil, true, "bazstruct:find(\"variable\", \"e\"):as(\"struct\") == nil"),
+        value_expect(bazstruct:find_variable("e"):as_struct() == nil, true, "bazstruct:find(\"variable\", \"e\"):as_struct() == nil"),
+        value_expect(bazstruct:find_variable("e"):is_a("type"), false, "bazstruct:find(\"variable\", \"e\"):is_a(\"type\")"),
+        value_expect(bazstruct:find_variable("e"):is_type(), false, "bazstruct:find(\"variable\", \"e\"):is_type()"),
+        value_expect(bazstruct:find_variable("e"):as("type") == nil, true, "bazstruct:find(\"variable\", \"e\"):as(\"type\") == nil"),
+        value_expect(bazstruct:find_variable("e"):as_type() == nil, true, "bazstruct:find(\"variable\", \"e\"):as_type() == nil"),
+        value_expect(bazstruct:find_variable("e"):type() ~= nil, true, "bazstruct:find(\"variable\", \"e\"):type() ~= nil"),
+        value_expect(bazstruct:find_variable("e"):type():is_a("type"), true, "bazstruct:find(\"variable\", \"e\"):type():is_a(\"type\")"),
+        value_expect(bazstruct:find_variable("e"):type():is_type(), true, "bazstruct:find(\"variable\", \"e\"):type():is_type()"),
+        value_expect(bazstruct:find_variable("e"):type():name() == "int", true, "bazstruct:find(\"variable\", \"e\"):type():name() == \"int\""),
+        value_expect(bazstruct:find_variable("e"):type():metadata()[1] == "i32", true, "bazstruct:find(\"variable\", \"e\"):type():metadata()[0] == \"i32\""),
+        value_expect(bazstruct:find_variable("not_real_var") == nil, true, "bazstruct:find(\"variable\", \"not_real_var\") == nil"),
         
         value_expect(baz.things:type():is_a("pointer"), true, "baz.things:type():is_a(\"pointer\")"),
         value_expect(baz.things:type():to():is_a("struct"), true, "baz.things:type():to():is_a(\"struct\")"),
+        value_expect(baz.things:type():to():is_struct(), true, "baz.things:type():to():is_struct()"),
         value_expect(baz.things:type():name(), "Thing*", "baz.things:type():name()"),
     }
+
+    --[[for i=0, 10000 do
+        bazstruct:find_variable("e"):type():is_type()
+    end]]
 
     for i=0, 10-1 do
         table.insert(results, value_expect(baz.things[i].abc, i * 2, "baz.things[" .. tostring(i) .. "].abc"))
     end
 
     local known_variables = bazstruct:get_all("variable")
+    local known_variables2 = bazstruct:get_all_variable()
+
+    table.insert(results, value_expect(#known_variables == #known_variables2, true, "#known_variables == #known_variables2"))
 
     table.insert(results, value_expect(known_variables ~= nil, true, "known_variables ~= nil"))
     table.insert(results, value_expect(#known_variables, 10, "#known_variables"))
 
     for k, v in pairs(known_variables) do
+        table.insert(results, value_expect(known_variables[k] == known_variables2[k], true, "known_variables[" .. tostring(k) .. "] == known_variables2[" .. tostring(k) .. "]"))
+
         local mt = getmetatable(baz)
         local ok, val = pcall(mt.__index, baz, v:name())
         table.insert(results, value_expect(ok, true, "pcall baz." .. v:name()))
