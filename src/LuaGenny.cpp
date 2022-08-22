@@ -10,7 +10,14 @@ extern "C" {
 #include <sol/sol.hpp>
 
 #if _MSC_VER == 1932 || _MSC_VER == 1933
-#define _MSC_OLD_VER _MSC_VER
+#if _MSC_VER == 1932
+#define _MSC_OLD_VER 1932
+#endif
+
+#if _MSC_VER == 1933
+#define _MSC_OLD_VER 1933
+#endif
+
 #undef _MSC_VER
 #define _MSC_VER 1919
 #include <tao/pegtl/demangle.hpp>
