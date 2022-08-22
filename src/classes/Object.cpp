@@ -38,6 +38,11 @@ struct TypeDescriptor {
         return nullptr;
     }
 
+    static T* as_standalone(genny::Object& o) {
+        return dynamic_cast<T*>(&o);
+    }
+
+
     static T* find(genny::Object& o, std::string_view name, std::string_view target_name) {
         if (name == Name.value) {
             return o.find<T>(target_name);
@@ -85,6 +90,15 @@ struct TypeDescriptor {
     static consteval std::string_view name() {
         return Name.value;
     }
+
+    static constexpr auto is_a_standalone = &genny::Object::is_a<T>;
+    static constexpr auto find_standalone = &genny::Object::find<T>;
+    static constexpr auto find_in_owners_standalone = &genny::Object::find_in_owners<T>;
+    static constexpr auto has_any_standalone = &genny::Object::has_any<T>;
+    static constexpr auto has_any_in_children_standalone = &genny::Object::has_any_in_children<T>;
+    static constexpr auto owner_standalone = (T* (genny::Object::*)())&genny::Object::owner<T>;
+    static constexpr auto topmost_owner_standalone = (T* (genny::Object::*)())&genny::Object::topmost_owner<T>;
+    static constexpr auto get_all_standalone = &genny::Object::get_all<T>;
 };
 
 template <typename ...Args>
@@ -94,7 +108,7 @@ struct Bindings {
 
 template <typename ...Args> // args are TypeDescriptors
 void create_bindings(sol::table sdkgenny) {
-    sdkgenny.new_usertype<genny::Object>("Object",
+    auto object = sdkgenny.new_usertype<genny::Object>("Object",
         "metadata", [](sol::this_state s, genny::Object& o) -> std::vector<std::string>& {
             return o.metadata();
         },
@@ -271,6 +285,16 @@ void create_bindings(sol::table sdkgenny) {
             return sol::make_object(s, sol::nil);
         }
     );
+
+    (object.set(std::string("is_") + Args::name().data(), Args::is_a_standalone), ...);
+    (object.set(std::string("as_") + Args::name().data(), Args::as_standalone), ...);
+    (object.set(std::string("find_") + Args::name().data(), Args::find_standalone), ...);
+    (object.set(std::string("find_") + Args::name().data() + "_in_owners", Args::find_in_owners_standalone), ...);
+    (object.set(std::string("has_any_") + Args::name().data(), Args::has_any_standalone), ...);
+    (object.set(std::string("has_any_") + Args::name().data() + "_in_children", Args::has_any_in_children_standalone), ...);
+    (object.set(std::string("owner_") + Args::name().data(), Args::owner_standalone), ...);
+    (object.set(std::string("topmost_owner_") + Args::name().data(), Args::topmost_owner_standalone), ...);
+    (object.set(std::string("get_all_") + Args::name().data(), Args::get_all_standalone), ...);
 }
 
 int open_object(lua_State* l) {
