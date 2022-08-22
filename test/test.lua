@@ -63,6 +63,9 @@ function do_tests()
     end
 
     local results = {
+        value_expect(bazstruct:name(), "Baz", "bazstruct:name()"),
+        value_expect(bazstruct:is_a("struct"), true, "bazstruct:is_a(\"struct\")"),
+        value_expect(bazstruct:is_a("type"), true, "bazstruct:is_a(\"type\")"),
         value_expect(baz.g.a, 43, "baz.g.a"),
         value_expect(baz.g.b, 1338, "baz.g.b"),
         value_expect(round(baz.g.c, 1), 78.7, "round(baz.g.c)"),
@@ -107,14 +110,19 @@ function do_tests()
         table.insert(results, value_expect(ok, true, "pcall baz." .. v:name()))
     end
 
+    local total_passed = 0
+
     for k, v in pairs(results) do
         if v == false then
             print("Detected failure at test " .. tostring(k))
-            return false
+        else
+            total_passed = total_passed + 1
         end
     end
 
-    return true
+    print(tostring(total_passed) .. " / " .. tostring(#results) .. " tests passed")
+
+    return #results == total_passed
 end
 
 local retval = do_tests()
