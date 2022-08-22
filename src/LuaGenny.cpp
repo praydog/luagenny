@@ -126,19 +126,33 @@ public:
         }
 
         const auto name = key.as<std::string>();
-        const auto v = m_type->find<genny::Variable>(name);
+        auto v = m_type->find<genny::Variable>(name);
+
+        uint32_t additional_offset = 0;
+
+        if (v == nullptr) {
+            const auto& parents = m_type->parents();
+
+            for (auto parent : parents) {
+                v = parent->find<genny::Variable>(name);
+
+                if (v != nullptr) {
+                    break;
+                }
+
+                additional_offset += parent->size();
+            }
+        }
 
         if (v == nullptr || v->type() == nullptr) {
             return sol::make_object(s, sol::nil);
         }
 
-        const auto value = parse_and_read(s, v);
-
-        return sol::make_object(s, value);
+        return sol::make_object(s, parse_and_read(s, v, additional_offset));
     }
 
 protected:
-    sol::object parse_and_read(sol::this_state s, genny::Variable* v) {
+    sol::object parse_and_read(sol::this_state s, genny::Variable* v, uint32_t additional_offset = 0) {
         const auto offset = v->offset();
 
         if (offset > m_type->size()) {
@@ -146,7 +160,7 @@ protected:
             return sol::make_object(s, sol::nil);
         }
 
-        const auto address = m_address + offset;
+        const auto address = m_address + offset + additional_offset;
 
         return sol::make_object(s, standalone_parse(s, address, v->type(), v));
     }
