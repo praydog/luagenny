@@ -36,6 +36,10 @@ link-libraries = [
     "sol2::sol2",
     "sdkgenny"
 ]
+include-directories = [
+    "include",
+]
+
 compile-features = ["cxx_std_20"]
 compile-options = ["/bigobj"]
 alias = "luagenny::luagenny"

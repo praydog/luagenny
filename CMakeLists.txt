@@ -80,7 +80,6 @@ list(APPEND luagenny_SOURCES
 	"src/classes/Typename.cpp"
 	"src/classes/Variable.cpp"
 	"src/classes/VirtualFunction.cpp"
-	"src/LuaGenny.hpp"
 	"src/classes/Array.hpp"
 	"src/classes/ClassMacros.hpp"
 	"src/classes/Constant.hpp"
@@ -118,6 +117,10 @@ target_compile_features(luagenny PUBLIC
 
 target_compile_options(luagenny PUBLIC
 	"/bigobj"
+)
+
+target_include_directories(luagenny PUBLIC
+	include
 )
 
 target_link_libraries(luagenny PUBLIC
