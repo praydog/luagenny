@@ -110,6 +110,7 @@ endif()
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${luagenny_SOURCES})
 
+add_library(luagenny::luagenny ALIAS luagenny)
 target_compile_features(luagenny PUBLIC
 	cxx_std_20
 )
@@ -164,8 +165,8 @@ target_include_directories(test PRIVATE
 target_link_libraries(test PRIVATE
 	lua
 	sol2::sol2
-	luagenny
-	sdkgenny
+	luagenny::luagenny
+	sdkgenny::sdkgenny
 )
 
 unset(CMKR_TARGET)

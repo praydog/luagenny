@@ -37,6 +37,7 @@ link-libraries = [
 ]
 compile-features = ["cxx_std_20"]
 compile-options = ["/bigobj"]
+alias = "luagenny::luagenny"
 
 [target.test]
 type = "executable"
@@ -47,8 +48,8 @@ include-directories = [
 link-libraries = [
     "lua",
     "sol2::sol2",
-    "luagenny",
-    "sdkgenny"
+    "luagenny::luagenny",
+    "sdkgenny::sdkgenny"
 ]
 compile-features = ["cxx_std_20"]
 
