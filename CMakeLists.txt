@@ -27,6 +27,7 @@ if(CMKR_ROOT_PROJECT)
 	configure_file(cmake.toml cmake.toml COPYONLY)
 endif()
 
+add_compile_options($<$<CXX_COMPILER_ID:MSVC>:/MP>)
 
 project(luagenny)
 
