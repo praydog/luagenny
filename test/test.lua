@@ -102,6 +102,16 @@ function do_tests()
         value_expect(bazstruct:find_variable("e"):type():name() == "int", true, "bazstruct:find(\"variable\", \"e\"):type():name() == \"int\""),
         value_expect(bazstruct:find_variable("e"):type():metadata()[1] == "i32", true, "bazstruct:find(\"variable\", \"e\"):type():metadata()[0] == \"i32\""),
         value_expect(bazstruct:find_variable("not_real_var") == nil, true, "bazstruct:find(\"variable\", \"not_real_var\") == nil"),
+
+        value_expect(bazstruct:find_variable("ta"):type():name() == "TA", true, "bazstruct:find(\"variable\", \"ta\"):type():name() == \"TA\""),
+        value_expect(bazstruct:find_variable("ta"):type():as_struct() ~= nil, true, "bazstruct:find(\"variable\", \"ta\"):type():as_struct() ~= nil"),
+        value_expect(bazstruct:find_variable("ta"):type():as_struct():parents()[1]:name() == "Student", true, "bazstruct:find(\"variable\", \"ta\"):type():as_struct():parents()[1]:name() == \"Student\""),
+        value_expect(bazstruct:find_variable("ta"):type():as_struct():parents()[2]:name() == "Faculty", true, "bazstruct:find(\"variable\", \"ta\"):type():parents()[2]:name() == \"Faculty\""),
+        value_expect(#bazstruct:find_variable("ta"):type():as_struct():parents()[1]:parents() == 1, true, "#bazstruct:find(\"variable\", \"ta\"):type():as_struct():parents()[1]:parents() == 1"),
+        value_expect(bazstruct:find_variable("ta"):type():as_struct():parents()[1]:parents()[1]:name() == "Person", true, "bazstruct:find(\"variable\", \"ta\"):type():as_struct():parents()[1]:parents()[1]:name() == \"Person\""),
+        value_expect(#bazstruct:find_variable("ta"):type():as_struct():parents()[1]:parents()[1]:parents(), 0, "#bazstruct:find(\"variable\", \"ta\"):type():as_struct():parents()[1]:parents()[1]:parents() == 0"),
+        value_expect(bazstruct:find_variable("ta"):type():as_struct():parents()[1]:find_variable_in_parents("age") ~= nil, true, "bazstruct:find(\"variable\", \"ta\"):type():as_struct():parents()[1]:find_variable_in_parents(\"age\") ~= nil"),
+        value_expect(bazstruct:find_variable("ta"):type():as_struct():parents()[1]:find_variable_in_parents("age"):name() == "age", true, "bazstruct:find(\"variable\", \"ta\"):type():as_struct():parents()[1]:find_variable_in_parents(\"age\"):name() == \"age\""),
         
         value_expect(baz.things:type():is_a("pointer"), true, "baz.things:type():is_a(\"pointer\")"),
         value_expect(baz.things:type():to():is_a("struct"), true, "baz.things:type():to():is_a(\"struct\")"),
