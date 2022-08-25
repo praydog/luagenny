@@ -31,4 +31,4 @@ jobs:
       - name: Test
         working-directory: build-${{matrix.arch}}
         run: |
-          ctest -j1 -C Release -T test --output-on-failure
+          ctest -j1 -C Release -T test --output-on-failure --progress --verbose --timeout 60

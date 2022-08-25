@@ -223,7 +223,15 @@ std::unique_ptr<genny::Sdk> parse_gennyfile() {
     return sdk;
 }
 
-int main() {
+int main(int argc, char* argv[]) {
+    bool performing_tests = false;
+    std::string script_path{};
+
+    if (argc >= 2) {
+        performing_tests = std::string{argv[1]} == "--test";
+        script_path = argv[2];
+    }
+
     // Create a Lua state
     sol::state lua{};
 
@@ -283,33 +291,48 @@ int main() {
     lua["bazaddr"] = (uintptr_t)baz;
 
     std::cout << "0x" << std::hex << (uintptr_t)baz << std::endl;
-    std::string input{};
+    int result = 1;
 
-    while (true) {
-        std::cout << "> ";
-        std::getline(std::cin, input);
+    if (!performing_tests) {
+        std::string input{};
 
-        const auto command = input.c_str();
+        while (true) {
+            std::cout << "> ";
+            std::getline(std::cin, input);
 
-        if (input == "quit") {
-            break;
-        } else {
-            auto result = luaL_loadbuffer(lua, command, strlen(command), nullptr);
+            const auto command = input.c_str();
 
-            if (result == LUA_OK) {
-                result = lua_pcall(lua, 0, LUA_MULTRET, 0);
+            if (input == "quit") {
+                break;
+            } else {
+                auto result = luaL_loadbuffer(lua, command, strlen(command), nullptr);
 
-                if (result != LUA_OK) {
+                if (result == LUA_OK) {
+                    result = lua_pcall(lua, 0, LUA_MULTRET, 0);
+
+                    if (result != LUA_OK) {
+                        std::cout << "ERROR: " << luaL_checkstring(lua, -1) << std::endl;
+                    }
+                } else {
                     std::cout << "ERROR: " << luaL_checkstring(lua, -1) << std::endl;
                 }
-            } else {
-                std::cout << "ERROR: " << luaL_checkstring(lua, -1) << std::endl;
             }
+        }
+    } else {
+        try {
+            result = lua.script_file(script_path).get<bool>() ? 0 : 1;
+        } catch (const std::exception& e) {
+            std::cout << "Error: " << e.what() << std::endl;
+        } catch (...) {
+            std::cout << "unknown error" << std::endl;
+        }
+
+        if (result == 0) {
+            std::cout << "Test passed!" << std::endl;
+        } else {
+            std::cout << "Test failed!" << std::endl;
         }
     }
 
-    std::cout << "Press ENTER to exit.";
-    std::cin.get();
-
-    return 0;
+    return result;
 }
