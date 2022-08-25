@@ -27,3 +27,8 @@ jobs:
         with:
           name: ${{github.event.repository.name}}-${{matrix.arch}}
           path: install-${{matrix.arch}}/bin/*
+
+      - name: Test
+        working-directory: build-${{matrix.arch}}
+        run: |
+          ctest -j1 -C Release -T test --output-on-failure

@@ -44,7 +44,7 @@ compile-features = ["cxx_std_20"]
 compile-options = ["/bigobj"]
 alias = "luagenny::luagenny"
 
-[target.test]
+[target.repl]
 type = "executable"
 sources = ["test/Main.cpp"]
 include-directories = [
@@ -58,6 +58,12 @@ link-libraries = [
 ]
 compile-features = ["cxx_std_20"]
 
+[[test]]
+name = "mytest"
+command = "$<TARGET_FILE:repl>"
+arguments = ["--test", "${CMAKE_CURRENT_SOURCE_DIR}/test/test.lua"]
+configurations = ["Debug", "Release", "RelWithDebInfo", "MinSizeRelease"]
+
 [[install]]
-targets = ["luagenny", "test"]
+targets = ["luagenny", "repl"]
 destination = "bin"

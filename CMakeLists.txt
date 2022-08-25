@@ -132,41 +132,41 @@ target_link_libraries(luagenny PUBLIC
 unset(CMKR_TARGET)
 unset(CMKR_SOURCES)
 
-# Target test
-set(CMKR_TARGET test)
-set(test_SOURCES "")
+# Target repl
+set(CMKR_TARGET repl)
+set(repl_SOURCES "")
 
-list(APPEND test_SOURCES
+list(APPEND repl_SOURCES
 	"test/Main.cpp"
 )
 
-list(APPEND test_SOURCES
+list(APPEND repl_SOURCES
 	cmake.toml
 )
 
-set(CMKR_SOURCES ${test_SOURCES})
-add_executable(test)
+set(CMKR_SOURCES ${repl_SOURCES})
+add_executable(repl)
 
-if(test_SOURCES)
-	target_sources(test PRIVATE ${test_SOURCES})
+if(repl_SOURCES)
+	target_sources(repl PRIVATE ${repl_SOURCES})
 endif()
 
 get_directory_property(CMKR_VS_STARTUP_PROJECT DIRECTORY ${PROJECT_SOURCE_DIR} DEFINITION VS_STARTUP_PROJECT)
 if(NOT CMKR_VS_STARTUP_PROJECT)
-	set_property(DIRECTORY ${PROJECT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT test)
+	set_property(DIRECTORY ${PROJECT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT repl)
 endif()
 
-source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${test_SOURCES})
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${repl_SOURCES})
 
-target_compile_features(test PRIVATE
+target_compile_features(repl PRIVATE
 	cxx_std_20
 )
 
-target_include_directories(test PRIVATE
+target_include_directories(repl PRIVATE
 	src
 )
 
-target_link_libraries(test PRIVATE
+target_link_libraries(repl PRIVATE
 	lua
 	sol2
 	luagenny::luagenny
@@ -176,10 +176,28 @@ target_link_libraries(test PRIVATE
 unset(CMKR_TARGET)
 unset(CMKR_SOURCES)
 
+enable_testing()
+
+add_test(
+	NAME
+		mytest
+	CONFIGURATIONS
+		Debug
+		Release
+		RelWithDebInfo
+		MinSizeRelease
+	WORKING_DIRECTORY
+		"${CMAKE_CURRENT_LIST_DIR}/"
+	COMMAND
+		"$<TARGET_FILE:repl>"
+		--test
+		"${CMAKE_CURRENT_SOURCE_DIR}/test/test.lua"
+)
+
 install(
 	TARGETS
 		luagenny
-		test
+		repl
 	DESTINATION
 		bin
 	COMPONENT
