@@ -1,4 +1,4 @@
-# sdkgenny-lua
+# luagenny ![buildstatus](https://github.com/praydog/luagenny/actions/workflows/build.yml/badge.svg)
 Lua bindings for [sdkgenny](https://github.com/cursey/sdkgenny)
 
 ## Projects using this
