@@ -1,6 +1,10 @@
 # sdkgenny-lua
 Lua bindings for [sdkgenny](https://github.com/cursey/sdkgenny)
 
+## Projects using this
+* [regenny](https://github.com/cursey/regenny) - A reverse engineering tool to interactively reconstruct structures and generate header files
+	* Can run scripts using the Lua API to perform convenient/automated analysis on structures
+
 ## Examples
 ```
 PS F:\Programming\projects\sdkgenny-lua\build\Debug> .\test.exe
