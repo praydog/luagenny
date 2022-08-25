@@ -5,7 +5,7 @@ add_compile_options($<$<CXX_COMPILER_ID:MSVC>:/MP>)
 """
 
 [vcpkg]
-version = "2022.05.10"
+version = "2022.08.15"
 packages = [
     "pegtl",
     "lua",
@@ -33,7 +33,7 @@ sources = [
 ]
 link-libraries = [
     "lua",
-    "sol2::sol2",
+    "sol2",
     "sdkgenny"
 ]
 include-directories = [
@@ -52,7 +52,7 @@ include-directories = [
 ]
 link-libraries = [
     "lua",
-    "sol2::sol2",
+    "sol2",
     "luagenny::luagenny",
     "sdkgenny::sdkgenny"
 ]

@@ -33,8 +33,8 @@ project(luagenny)
 
 if(CMKR_ROOT_PROJECT AND NOT CMKR_DISABLE_VCPKG)
 	include(FetchContent)
-	message(STATUS "Fetching vcpkg (2022.05.10)...")
-	FetchContent_Declare(vcpkg URL "https://github.com/microsoft/vcpkg/archive/refs/tags/2022.05.10.tar.gz")
+	message(STATUS "Fetching vcpkg (2022.08.15)...")
+	FetchContent_Declare(vcpkg URL "https://github.com/microsoft/vcpkg/archive/refs/tags/2022.08.15.tar.gz")
 	FetchContent_GetProperties(vcpkg)
 	if(NOT vcpkg_POPULATED)
 		FetchContent_Populate(vcpkg)
@@ -125,7 +125,7 @@ target_include_directories(luagenny PUBLIC
 
 target_link_libraries(luagenny PUBLIC
 	lua
-	sol2::sol2
+	sol2
 	sdkgenny
 )
 
@@ -168,7 +168,7 @@ target_include_directories(test PRIVATE
 
 target_link_libraries(test PRIVATE
 	lua
-	sol2::sol2
+	sol2
 	luagenny::luagenny
 	sdkgenny::sdkgenny
 )
