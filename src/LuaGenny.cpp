@@ -84,6 +84,56 @@ sol::object string_reader(sol::this_state s, uintptr_t address) {
     return sol::make_object(s, (const char*)address);
 }
 
+void writer(sol::this_state s, uintptr_t address, size_t size, sol::object value) {
+    switch(size) {
+    case 8:
+        if (!value.is<sol::nil_t>()) {
+            value.push();
+
+            if (lua_isinteger(s, -1)) {
+                *(uint64_t*)address = (uint64_t)lua_tointeger(s, -1);
+            } else if (lua_isnumber(s, -1)) {
+                *(double*)address = lua_tonumber(s, -1);
+            }
+
+            value.pop();
+        } else {
+            *(uint64_t*)address = 0;
+        }
+
+        break;
+    case 4:
+        if (!value.is<sol::nil_t>()) {
+            value.push();
+
+            if (lua_isinteger(s, -1)) {
+                *(uint32_t*)address = (uint32_t)lua_tointeger(s, -1);
+            } else if (lua_isnumber(s, -1)) {
+                *(float*)address = (float)lua_tonumber(s, -1);
+            }
+
+            value.pop();
+        } else {
+            *(uint32_t*)address = 0;
+        }
+
+        break;
+    case 2:
+        *(uint16_t*)address = value.as<uint16_t>();
+        break;
+    case 1:
+        value.push();
+
+        if (lua_isboolean(s, -1)) {
+            *(uint8_t*)address = lua_toboolean(s, -1);
+        } else if (lua_isinteger(s, -1)) {
+            *(uint8_t*)address = (uint8_t)lua_tointeger(s, -1);
+        }
+
+        break;
+    }
+}
+
 std::optional<std::tuple<genny::Variable*, size_t>> get_variable(genny::Struct* s, const std::string& name, size_t additional_offset = 0) {
     auto v = s->find<genny::Variable>(name);
 
@@ -116,6 +166,7 @@ public:
     }
 
     virtual sol::object index(sol::this_state s, sol::object key) = 0;
+    virtual void new_index(sol::this_state s, sol::object key, sol::object value) {};
 
     sol::object type_(sol::this_state s) const {
         return sol::make_object(s, m_type);
@@ -163,18 +214,53 @@ public:
         return sol::make_object(s, parse_and_read(s, v, additional_offset));
     }
 
+    void new_index(sol::this_state s, sol::object key, sol::object value) override {
+        if (!key.is<std::string>()) {
+            return;
+        }
+
+        const auto name = key.as<std::string>();
+        const auto pv = get_variable(m_type, name);
+
+        if (!pv) {
+            return;
+        }
+
+        const auto& [v, additional_offset] = *pv;
+
+        if (v == nullptr || v->type() == nullptr) {
+            return;
+        }
+
+        // TODO: maybe figure out the type pointed to
+        // and adjust how we write the value rather than writing
+        // the value verbatim to the address (e.g. struct.some_float = 1 will write an integer instead of a float)
+        this->write(s, v, additional_offset, value);
+    }
+
 protected:
-    sol::object parse_and_read(sol::this_state s, genny::Variable* v, size_t additional_offset = 0) {
-        const auto offset = v->offset();
+    uintptr_t get_final_address(genny::Variable* v, size_t additional_offset = 0) const {
+         const auto offset = v->offset();
 
         if (offset > m_type->size()) {
             throw std::runtime_error("offset out of bounds");
-            return sol::make_object(s, sol::nil);
+            return 0;
         }
 
-        const auto address = m_address + offset + additional_offset;
+        return m_address + offset + additional_offset;
+    }
+
+    sol::object parse_and_read(sol::this_state s, genny::Variable* v, size_t additional_offset = 0) {
+        const auto address = get_final_address(v, additional_offset);
 
         return sol::make_object(s, standalone_parse(s, address, v->type(), v));
+    }
+
+    void write(sol::this_state s, genny::Variable* v, size_t additional_offset, sol::object value) {
+        const auto address = get_final_address(v, additional_offset);
+
+        sol::function lua_writer = sol::state_view{s}["sdkgenny_writer"];
+        lua_writer(s, address, v->type()->size(), value);
     }
 };
 
@@ -203,6 +289,28 @@ public:
         }
 
         return sol::make_object(s, sol::nil);
+    }
+
+    void new_index(sol::this_state s, sol::object key, sol::object value) override {
+        const auto pointed_to = ptr_internal(s);
+
+        if (pointed_to == 0) {
+            return;
+        }
+
+        if (m_type->to()->is_a<genny::Struct>()) {
+            StructOverlay{pointed_to, dynamic_cast<genny::Struct*>(m_type->to())}.new_index(s, key, value);
+            return;
+        }
+
+        // TODO: maybe figure out the type pointed to
+        // and adjust how we write the value rather than writing
+        // the value verbatim to the address (e.g. struct.some_float = 1 will write an integer instead of a float)
+        if (key.is<int>()) {
+            const auto adjusted_to = pointed_to + (m_type->to()->size() * key.as<int>());
+            sol::function lua_writer = sol::state_view{s}["sdkgenny_writer"];
+            lua_writer(s, adjusted_to, m_type->to()->size(), value);
+        }
     }
     
     // Address pointed to, not address of pointer
@@ -342,6 +450,7 @@ int open(lua_State* l) {
 
     lua["sdkgenny_reader"] = &api::reader;
     lua["sdkgenny_string_reader"] = &api::string_reader;
+    lua["sdkgenny_writer"] = &api::writer;
     sdkgenny["parse"] = &api::parse;
     sdkgenny["parse_file"] = &api::parse_file;
 
@@ -350,7 +459,8 @@ int open(lua_State* l) {
         sol::call_constructor, sol::constructors<api::StructOverlay(uintptr_t, genny::Struct*)>(),
         "type", &api::StructOverlay::type_,
         "address", &api::StructOverlay::address,
-        sol::meta_function::index, &api::StructOverlay::index
+        sol::meta_function::index, &api::StructOverlay::index,
+        sol::meta_function::new_index, &api::StructOverlay::new_index
     );
 
     sdkgenny.new_usertype<api::PointerOverlay>("PointerOverlay",
@@ -363,7 +473,8 @@ int open(lua_State* l) {
         "dereference", &api::PointerOverlay::d, // Resolve the pointed to address into a pointer or value. Same as ptr[0].
         "p", &api::PointerOverlay::ptr, // address pointed to, like auto var = (uintptr_t)ptr.
         "ptr", &api::PointerOverlay::ptr, // address pointed to, like auto var = (uintptr_t)ptr.
-        sol::meta_function::index, &api::PointerOverlay::index // Access like ptr->field in C++ or an array, like ptr[i]
+        sol::meta_function::index, &api::PointerOverlay::index, // Access like ptr->field in C++ or an array, like ptr[i]
+        sol::meta_function::new_index, &api::PointerOverlay::new_index // Access like ptr->field = value in C++ or an array, like ptr[i] = value
     );
 
     sdkgenny.push();
