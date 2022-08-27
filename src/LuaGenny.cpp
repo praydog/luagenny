@@ -125,10 +125,12 @@ void writer(sol::this_state s, uintptr_t address, size_t size, sol::object value
         value.push();
 
         if (lua_isboolean(s, -1)) {
-            *(uint8_t*)address = lua_toboolean(s, -1);
+            *(bool*)address = lua_toboolean(s, -1);
         } else if (lua_isinteger(s, -1)) {
             *(uint8_t*)address = (uint8_t)lua_tointeger(s, -1);
         }
+
+        value.pop();
 
         break;
     }
