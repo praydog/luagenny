@@ -28,6 +28,8 @@ if(CMKR_ROOT_PROJECT)
 endif()
 
 add_compile_options($<$<CXX_COMPILER_ID:MSVC>:/MP>)
+option(LUAGENNY_BUILD_STATIC OFF)
+message("${LUAGENNY_BUILD_STATIC}")
 
 project(luagenny)
 
@@ -60,77 +62,158 @@ find_package(lua)
 
 find_package(sol2)
 
-# Target luagenny
-set(CMKR_TARGET luagenny)
-set(luagenny_SOURCES "")
+# Target luagenny_static
+if(LUAGENNY_BUILD_STATIC) # static
+	set(CMKR_TARGET luagenny_static)
+	set(luagenny_static_SOURCES "")
 
-list(APPEND luagenny_SOURCES
-	"src/LuaGenny.cpp"
-	"src/classes/Array.cpp"
-	"src/classes/Constant.cpp"
-	"src/classes/Enum.cpp"
-	"src/classes/Function.cpp"
-	"src/classes/Namespace.cpp"
-	"src/classes/Object.cpp"
-	"src/classes/Parameter.cpp"
-	"src/classes/Reference.cpp"
-	"src/classes/Sdk.cpp"
-	"src/classes/Struct.cpp"
-	"src/classes/Type.cpp"
-	"src/classes/Typename.cpp"
-	"src/classes/Variable.cpp"
-	"src/classes/VirtualFunction.cpp"
-	"src/classes/Array.hpp"
-	"src/classes/ClassMacros.hpp"
-	"src/classes/Constant.hpp"
-	"src/classes/Enum.hpp"
-	"src/classes/Function.hpp"
-	"src/classes/Namespace.hpp"
-	"src/classes/Object.hpp"
-	"src/classes/Parameter.hpp"
-	"src/classes/Reference.hpp"
-	"src/classes/Sdk.hpp"
-	"src/classes/Struct.hpp"
-	"src/classes/Type.hpp"
-	"src/classes/Typename.hpp"
-	"src/classes/Variable.hpp"
-	"src/classes/VirtualFunction.hpp"
-)
+	list(APPEND luagenny_static_SOURCES
+		"src/LuaGenny.cpp"
+		"src/classes/Array.cpp"
+		"src/classes/Constant.cpp"
+		"src/classes/Enum.cpp"
+		"src/classes/Function.cpp"
+		"src/classes/Namespace.cpp"
+		"src/classes/Object.cpp"
+		"src/classes/Parameter.cpp"
+		"src/classes/Reference.cpp"
+		"src/classes/Sdk.cpp"
+		"src/classes/Struct.cpp"
+		"src/classes/Type.cpp"
+		"src/classes/Typename.cpp"
+		"src/classes/Variable.cpp"
+		"src/classes/VirtualFunction.cpp"
+		"src/classes/Array.hpp"
+		"src/classes/ClassMacros.hpp"
+		"src/classes/Constant.hpp"
+		"src/classes/Enum.hpp"
+		"src/classes/Function.hpp"
+		"src/classes/Namespace.hpp"
+		"src/classes/Object.hpp"
+		"src/classes/Parameter.hpp"
+		"src/classes/Reference.hpp"
+		"src/classes/Sdk.hpp"
+		"src/classes/Struct.hpp"
+		"src/classes/Type.hpp"
+		"src/classes/Typename.hpp"
+		"src/classes/Variable.hpp"
+		"src/classes/VirtualFunction.hpp"
+	)
 
-list(APPEND luagenny_SOURCES
-	cmake.toml
-)
+	list(APPEND luagenny_static_SOURCES
+		cmake.toml
+	)
 
-set(CMKR_SOURCES ${luagenny_SOURCES})
-add_library(luagenny STATIC)
+	set(CMKR_SOURCES ${luagenny_static_SOURCES})
+	add_library(luagenny_static STATIC)
 
-if(luagenny_SOURCES)
-	target_sources(luagenny PRIVATE ${luagenny_SOURCES})
+	if(luagenny_static_SOURCES)
+		target_sources(luagenny_static PRIVATE ${luagenny_static_SOURCES})
+	endif()
+
+	source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${luagenny_static_SOURCES})
+
+	add_library(luagenny::luagenny ALIAS luagenny_static)
+
+	target_compile_features(luagenny_static PUBLIC
+		cxx_std_20
+	)
+
+	target_compile_options(luagenny_static PUBLIC
+		"/bigobj"
+	)
+
+	target_include_directories(luagenny_static PUBLIC
+		include
+	)
+
+	target_link_libraries(luagenny_static PUBLIC
+		lua
+		sol2
+		sdkgenny
+	)
+
+	unset(CMKR_TARGET)
+	unset(CMKR_SOURCES)
 endif()
 
-source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${luagenny_SOURCES})
+# Target luagenny_shared
+if(NOT LUAGENNY_BUILD_STATIC) # shared
+	set(CMKR_TARGET luagenny_shared)
+	set(luagenny_shared_SOURCES "")
 
-add_library(luagenny::luagenny ALIAS luagenny)
-target_compile_features(luagenny PUBLIC
-	cxx_std_20
-)
+	list(APPEND luagenny_shared_SOURCES
+		"src/LuaGenny.cpp"
+		"src/classes/Array.cpp"
+		"src/classes/Constant.cpp"
+		"src/classes/Enum.cpp"
+		"src/classes/Function.cpp"
+		"src/classes/Namespace.cpp"
+		"src/classes/Object.cpp"
+		"src/classes/Parameter.cpp"
+		"src/classes/Reference.cpp"
+		"src/classes/Sdk.cpp"
+		"src/classes/Struct.cpp"
+		"src/classes/Type.cpp"
+		"src/classes/Typename.cpp"
+		"src/classes/Variable.cpp"
+		"src/classes/VirtualFunction.cpp"
+		"src/classes/Array.hpp"
+		"src/classes/ClassMacros.hpp"
+		"src/classes/Constant.hpp"
+		"src/classes/Enum.hpp"
+		"src/classes/Function.hpp"
+		"src/classes/Namespace.hpp"
+		"src/classes/Object.hpp"
+		"src/classes/Parameter.hpp"
+		"src/classes/Reference.hpp"
+		"src/classes/Sdk.hpp"
+		"src/classes/Struct.hpp"
+		"src/classes/Type.hpp"
+		"src/classes/Typename.hpp"
+		"src/classes/Variable.hpp"
+		"src/classes/VirtualFunction.hpp"
+	)
 
-target_compile_options(luagenny PUBLIC
-	"/bigobj"
-)
+	list(APPEND luagenny_shared_SOURCES
+		cmake.toml
+	)
 
-target_include_directories(luagenny PUBLIC
-	include
-)
+	set(CMKR_SOURCES ${luagenny_shared_SOURCES})
+	add_library(luagenny_shared SHARED)
 
-target_link_libraries(luagenny PUBLIC
-	lua
-	sol2
-	sdkgenny
-)
+	if(luagenny_shared_SOURCES)
+		target_sources(luagenny_shared PRIVATE ${luagenny_shared_SOURCES})
+	endif()
 
-unset(CMKR_TARGET)
-unset(CMKR_SOURCES)
+	source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${luagenny_shared_SOURCES})
+
+	add_library(luagenny::luagenny ALIAS luagenny_shared)
+	target_compile_definitions(luagenny_shared PUBLIC
+		LUAGENNY_EXPORTS
+	)
+
+	target_compile_features(luagenny_shared PUBLIC
+		cxx_std_20
+	)
+
+	target_compile_options(luagenny_shared PUBLIC
+		"/bigobj"
+	)
+
+	target_include_directories(luagenny_shared PUBLIC
+		include
+	)
+
+	target_link_libraries(luagenny_shared PUBLIC
+		lua
+		sol2
+		sdkgenny
+	)
+
+	unset(CMKR_TARGET)
+	unset(CMKR_SOURCES)
+endif()
 
 # Target repl
 set(CMKR_TARGET repl)
@@ -194,12 +277,25 @@ add_test(
 		"${CMAKE_CURRENT_SOURCE_DIR}/test/test.lua"
 )
 
-install(
-	TARGETS
-		luagenny
-		repl
-	DESTINATION
-		bin
-	COMPONENT
-		luagenny
-)
+if(NOT LUAGENNY_BUILD_STATIC) # shared
+	install(
+		TARGETS
+			luagenny_shared
+			repl
+		DESTINATION
+			bin
+		COMPONENT
+			luagenny_shared
+	)
+endif()
+if(LUAGENNY_BUILD_STATIC) # static
+	install(
+		TARGETS
+			luagenny_static
+			repl
+		DESTINATION
+			bin
+		COMPONENT
+			luagenny_static
+	)
+endif()

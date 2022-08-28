@@ -24,7 +24,7 @@ extern "C" {
 #define _MSC_VER _MSC_OLD_VER
 #endif
 
-#include <LuaGenny.hpp>
+#include <LuaGenny.h>
 
 #include "GennyParser.hpp"
 
@@ -239,7 +239,7 @@ int main(int argc, char* argv[]) {
     sol::lib::utf8, sol::lib::os, sol::lib::coroutine);
 
     // Add the sdkgenny bindings
-    luagenny::open(lua);
+    luaopen_luagenny(lua);
     sol::table sdkgenny = sol::stack::pop<sol::table>(lua);
     lua["sdkgenny"] = sdkgenny;
 

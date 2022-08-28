@@ -2,6 +2,8 @@
 name = "luagenny"
 cmake-before="""
 add_compile_options($<$<CXX_COMPILER_ID:MSVC>:/MP>)
+option(LUAGENNY_BUILD_STATIC OFF)
+message("${LUAGENNY_BUILD_STATIC}")
 """
 
 [vcpkg]
@@ -23,9 +25,11 @@ lua = { required = false }
 sol2 = { required = false }
 
 [conditions]
-static = "${VCPKG_TARGET_TRIPLET} MATCHES \".+static\""
+static = "LUAGENNY_BUILD_STATIC"
+shared = "NOT LUAGENNY_BUILD_STATIC"
 
-[target.luagenny]
+[target.luagenny_static]
+condition = "static"
 type = "static"
 sources = [
     "src/**.cpp",
@@ -39,9 +43,29 @@ link-libraries = [
 include-directories = [
     "include",
 ]
-
 compile-features = ["cxx_std_20"]
 compile-options = ["/bigobj"]
+compile-definitions = []
+alias = "luagenny::luagenny"
+
+[target.luagenny_shared]
+condition = "shared"
+type = "shared"
+sources = [
+    "src/**.cpp",
+    "src/**.hpp",
+]
+link-libraries = [
+    "lua",
+    "sol2",
+    "sdkgenny"
+]
+include-directories = [
+    "include",
+]
+compile-features = ["cxx_std_20"]
+compile-options = ["/bigobj"]
+compile-definitions = ["LUAGENNY_EXPORTS"]
 alias = "luagenny::luagenny"
 
 [target.repl]
@@ -65,5 +89,11 @@ arguments = ["--test", "${CMAKE_CURRENT_SOURCE_DIR}/test/test.lua"]
 configurations = ["Debug", "Release", "RelWithDebInfo", "MinSizeRelease"]
 
 [[install]]
-targets = ["luagenny", "repl"]
+condition = "shared"
+targets = ["luagenny_shared", "repl"]
+destination = "bin"
+
+[[install]]
+condition = "static"
+targets = ["luagenny_static", "repl"]
 destination = "bin"

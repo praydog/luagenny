@@ -44,6 +44,7 @@ extern "C" {
 #include "classes/Constant.hpp"
 #include "classes/Array.hpp"
 
+#include "LuaGenny.h"
 #include "LuaGenny.hpp"
 
 namespace luagenny {
@@ -543,5 +544,9 @@ int open(lua_State* l) {
 
     sdkgenny.push(l);
     return 1;
-} // namespace sdkgennylua
+} // namespace luagenny
+}
+
+int luaopen_luagenny(lua_State* l) {
+    return luagenny::open(l);
 }
