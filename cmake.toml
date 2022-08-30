@@ -48,6 +48,9 @@ compile-options = ["/bigobj"]
 compile-definitions = []
 alias = "luagenny::luagenny"
 
+[target.luagenny_static.properties]
+OUTPUT_NAME="luagenny"
+
 [target.luagenny_shared]
 condition = "shared"
 type = "shared"
@@ -67,6 +70,9 @@ compile-features = ["cxx_std_20"]
 compile-options = ["/bigobj"]
 compile-definitions = ["LUAGENNY_EXPORTS"]
 alias = "luagenny::luagenny"
+
+[target.luagenny_shared.properties]
+OUTPUT_NAME="luagenny"
 
 [target.repl]
 type = "executable"

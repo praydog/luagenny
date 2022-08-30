@@ -133,6 +133,11 @@ if(LUAGENNY_BUILD_STATIC) # static
 		sdkgenny
 	)
 
+	set_target_properties(luagenny_static PROPERTIES
+		OUTPUT_NAME
+			luagenny
+	)
+
 	unset(CMKR_TARGET)
 	unset(CMKR_SOURCES)
 endif()
@@ -209,6 +214,11 @@ if(NOT LUAGENNY_BUILD_STATIC) # shared
 		lua
 		sol2
 		sdkgenny
+	)
+
+	set_target_properties(luagenny_shared PROPERTIES
+		OUTPUT_NAME
+			luagenny
 	)
 
 	unset(CMKR_TARGET)
