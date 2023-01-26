@@ -117,12 +117,12 @@ void create_bindings(sol::table sdkgenny) {
             return (Args::is_a(o, name) || ... || false);
         },
         "as", [] (sol::this_state s, genny::Object& o, const char* name) -> sol::object {
-            /*sol::object result = sol::make_object(s, sol::nil);
+            /*sol::object result = sol::make_object(s, sol::lua_nil);
 
             (((
-                (result = sol::make_object(s, Args::as(o, name))) && !result.is<sol::nil_t>()))
+                (result = sol::make_object(s, Args::as(o, name))) && !result.is<sol::lua_nil_t>()))
                 || ...
-                || (result = sol::make_object(s, sol::nil))
+                || (result = sol::make_object(s, sol::lua_nil))
             );
 
             return result;*/
@@ -131,7 +131,7 @@ void create_bindings(sol::table sdkgenny) {
             static std::unordered_map<std::string, ft> find_functions = []() {
                 std::unordered_map<std::string, ft> find_functions{};
                 (find_functions.emplace(Args::name().data(), [] (sol::this_state s, genny::Object& o) -> sol::object {
-                    return sol::make_object(s, dynamic_cast<Args::Type*>(&o));
+                    return sol::make_object(s, dynamic_cast<typename Args::Type*>(&o));
                 }), ...);
 
                 return find_functions;
@@ -141,15 +141,15 @@ void create_bindings(sol::table sdkgenny) {
                 return it->second(s, o);
             }
 
-            return sol::make_object(s, sol::nil);
+            return sol::make_object(s, sol::lua_nil);
         },
         "find", [] (sol::this_state s, genny::Object& o, const char* name, const char* target_name) -> sol::object {
-            /*sol::object result = sol::make_object(s, sol::nil);
+            /*sol::object result = sol::make_object(s, sol::lua_nil);
 
             (((
-                (result = sol::make_object(s, Args::find(o, name, target_name))) && !result.is<sol::nil_t>()))
+                (result = sol::make_object(s, Args::find(o, name, target_name))) && !result.is<sol::lua_nil_t>()))
                 || ...
-                || (result = sol::make_object(s, sol::nil))
+                || (result = sol::make_object(s, sol::lua_nil))
             );
 
             return result;*/
@@ -158,7 +158,7 @@ void create_bindings(sol::table sdkgenny) {
             static std::unordered_map<std::string, ft> find_functions = []() {
                 std::unordered_map<std::string, ft> find_functions{};
                 (find_functions.emplace(Args::name().data(), [] (sol::this_state s, genny::Object& o, std::string_view target_name) -> sol::object {
-                    return sol::make_object(s, o.find<Args::Type>(target_name));
+                    return sol::make_object(s, o.find<typename Args::Type>(target_name));
                 }), ...);
 
                 return find_functions;
@@ -168,15 +168,15 @@ void create_bindings(sol::table sdkgenny) {
                 return it->second(s, o, target_name);
             }
 
-            return sol::make_object(s, sol::nil);
+            return sol::make_object(s, sol::lua_nil);
         },
         "find_in_owners", [] (sol::this_state s, genny::Object& o, const char* name, const char* target_name, bool include_self) -> sol::object {
-            /*sol::object result = sol::make_object(s, sol::nil);
+            /*sol::object result = sol::make_object(s, sol::lua_nil);
 
             (((
-                (result = sol::make_object(s, Args::find_in_owners(o, name, target_name, include_self))) && !result.is<sol::nil_t>()))
+                (result = sol::make_object(s, Args::find_in_owners(o, name, target_name, include_self))) && !result.is<sol::lua_nil_t>()))
                 || ...
-                || (result = sol::make_object(s, sol::nil))
+                || (result = sol::make_object(s, sol::lua_nil))
             );
 
             return result;*/
@@ -185,7 +185,7 @@ void create_bindings(sol::table sdkgenny) {
             static std::unordered_map<std::string, ft> find_in_owners_functions = []() {
                 std::unordered_map<std::string, ft> find_in_owners_functions{};
                 (find_in_owners_functions.emplace(Args::name().data(), [] (sol::this_state s, genny::Object& o, std::string_view target_name, bool include_self) -> sol::object {
-                    return sol::make_object(s, o.find_in_owners<Args::Type>(target_name, include_self));
+                    return sol::make_object(s, o.find_in_owners<typename Args::Type>(target_name, include_self));
                 }), ...);
 
                 return find_in_owners_functions;
@@ -195,7 +195,7 @@ void create_bindings(sol::table sdkgenny) {
                 return it->second(s, o, target_name, include_self);
             }
 
-            return sol::make_object(s, sol::nil);
+            return sol::make_object(s, sol::lua_nil);
         },
         "has_any", [] (sol::this_state s, genny::Object& o, const char* name) -> bool {
             return (Args::has_any(o, name) || ... || false); // this is faster than using the map
@@ -204,12 +204,12 @@ void create_bindings(sol::table sdkgenny) {
             return (Args::has_any_in_children(o, name) || ... || false);
         },
         "owner", [] (sol::this_state s, genny::Object& o, const char* name) -> sol::object {
-            /*sol::object result = sol::make_object(s, sol::nil);
+            /*sol::object result = sol::make_object(s, sol::lua_nil);
 
             (((
-                (result = sol::make_object(s, Args::owner(o, name))) && !result.is<sol::nil_t>()))
+                (result = sol::make_object(s, Args::owner(o, name))) && !result.is<sol::lua_nil_t>()))
                 || ...
-                || (result = sol::make_object(s, sol::nil))
+                || (result = sol::make_object(s, sol::lua_nil))
             );
 
             return result;*/
@@ -218,7 +218,7 @@ void create_bindings(sol::table sdkgenny) {
             static std::unordered_map<std::string, ft> find_functions = []() {
                 std::unordered_map<std::string, ft> find_functions{};
                 (find_functions.emplace(Args::name().data(), [] (sol::this_state s, genny::Object& o) -> sol::object {
-                    return sol::make_object(s, o.owner<Args::Type>());
+                    return sol::make_object(s, o.owner<typename Args::Type>());
                 }), ...);
 
                 return find_functions;
@@ -228,15 +228,15 @@ void create_bindings(sol::table sdkgenny) {
                 return it->second(s, o);
             }
 
-            return sol::make_object(s, sol::nil);
+            return sol::make_object(s, sol::lua_nil);
         },
         "topmost_owner", [] (sol::this_state s, genny::Object& o, const char* name) -> sol::object {
-            /*sol::object result = sol::make_object(s, sol::nil);
+            /*sol::object result = sol::make_object(s, sol::lua_nil);
 
             (((
-                (result = sol::make_object(s, Args::topmost_owner(o, name))) && !result.is<sol::nil_t>()))
+                (result = sol::make_object(s, Args::topmost_owner(o, name))) && !result.is<sol::lua_nil_t>()))
                 || ...
-                || (result = sol::make_object(s, sol::nil))
+                || (result = sol::make_object(s, sol::lua_nil))
             );
 
             return result;*/
@@ -245,7 +245,7 @@ void create_bindings(sol::table sdkgenny) {
             static std::unordered_map<std::string, ft> find_functions = []() {
                 std::unordered_map<std::string, ft> find_functions{};
                 (find_functions.emplace(Args::name().data(), [] (sol::this_state s, genny::Object& o) -> sol::object {
-                    return sol::make_object(s, o.topmost_owner<Args::Type>());
+                    return sol::make_object(s, o.topmost_owner<typename Args::Type>());
                 }), ...);
 
                 return find_functions;
@@ -255,15 +255,15 @@ void create_bindings(sol::table sdkgenny) {
                 return it->second(s, o);
             }
 
-            return sol::make_object(s, sol::nil);
+            return sol::make_object(s, sol::lua_nil);
         },
         "get_all", [] (sol::this_state s, genny::Object& o, const char* name) -> sol::object {
-            /*sol::object result = sol::make_object(s, sol::nil);
+            /*sol::object result = sol::make_object(s, sol::lua_nil);
 
             (((
-                (result = sol::make_object(s, Args::get_all(o, name))) && !result.is<sol::nil_t>()))
+                (result = sol::make_object(s, Args::get_all(o, name))) && !result.is<sol::lua_nil_t>()))
                 || ...
-                || (result = sol::make_object(s, sol::nil))
+                || (result = sol::make_object(s, sol::lua_nil))
             );
 
             return result;*/
@@ -272,7 +272,7 @@ void create_bindings(sol::table sdkgenny) {
             static std::unordered_map<std::string, ft> find_functions = []() {
                 std::unordered_map<std::string, ft> find_functions{};
                 (find_functions.emplace(Args::name().data(), [] (sol::this_state s, genny::Object& o) -> sol::object {
-                    return sol::make_object(s, o.get_all<Args::Type>());
+                    return sol::make_object(s, o.get_all<typename Args::Type>());
                 }), ...);
 
                 return find_functions;
@@ -282,7 +282,7 @@ void create_bindings(sol::table sdkgenny) {
                 return it->second(s, o);
             }
 
-            return sol::make_object(s, sol::nil);
+            return sol::make_object(s, sol::lua_nil);
         }
     );
 

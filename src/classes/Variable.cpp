@@ -17,7 +17,7 @@ int open_variable(lua_State* l) {
     sdkgenny.new_usertype<genny::Variable>("Variable",
         sol::base_classes, sol::bases<genny::Object>(),
         "type", [](sol::this_state s, genny::Variable& f, sol::object param) -> sol::object {
-            if (param.is<sol::nil_t>()) {
+            if (param.is<sol::lua_nil_t>()) {
                 return sol::make_object(s, f.type());
             }
 

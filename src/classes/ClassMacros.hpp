@@ -1,5 +1,7 @@
 #pragma once
 
+#include <sol/sol.hpp>
+
 #define GENNY_OBJECT_GEN(luaname, cppname) \
     "is_" #luaname, [](genny::Object& o) { return o.is_a<cppname>(); }, \
     "as_" #luaname, [](genny::Object& o) -> cppname* { return o.is_a<cppname>() ? dynamic_cast<cppname*>(&o) : nullptr; }, \
@@ -14,7 +16,7 @@
 
 #define MULTIFUNCTION(parent_type, name, possible_type) \
     #name, [](sol::this_state s, parent_type& f, sol::object param) -> sol::object { \
-        if (param.is<sol::nil_t>()) { \
+        if (param.is<sol::lua_nil_t>()) { \
             return sol::make_object(s, f.name()); \
         } \
         return sol::make_object(s, f.name(param.as<possible_type>())); \
