@@ -78,7 +78,7 @@ sol::object reader(sol::this_state s, uintptr_t address, size_t size) {
         return sol::make_object(s, *(uint8_t*)address);
     }
     
-    return sol::make_object(s, sol::nil);
+    return sol::make_object(s, sol::lua_nil);
 }
 
 sol::object string_reader(sol::this_state s, uintptr_t address) {
@@ -88,7 +88,7 @@ sol::object string_reader(sol::this_state s, uintptr_t address) {
 void writer(sol::this_state s, uintptr_t address, size_t size, sol::object value) {
     switch(size) {
     case 8:
-        if (!value.is<sol::nil_t>()) {
+        if (!value.is<sol::lua_nil_t>()) {
             value.push();
 
             if (lua_isinteger(s, -1)) {
@@ -104,7 +104,7 @@ void writer(sol::this_state s, uintptr_t address, size_t size, sol::object value
 
         break;
     case 4:
-        if (!value.is<sol::nil_t>()) {
+        if (!value.is<sol::lua_nil_t>()) {
             value.push();
 
             if (lua_isinteger(s, -1)) {
@@ -198,20 +198,20 @@ public:
         }
 
         if (!key.is<std::string>()) {
-            return sol::make_object(s, sol::nil);
+            return sol::make_object(s, sol::lua_nil);
         }
 
         const auto name = key.as<std::string>();
         const auto pv = get_variable(m_type, name);
 
         if (!pv) {
-            return sol::make_object(s, sol::nil);
+            return sol::make_object(s, sol::lua_nil);
         }
 
         const auto& [v, additional_offset] = *pv;
 
         if (v == nullptr || v->type() == nullptr) {
-            return sol::make_object(s, sol::nil);
+            return sol::make_object(s, sol::lua_nil);
         }
 
         return sol::make_object(s, parse_and_read(s, v, additional_offset));
@@ -279,7 +279,7 @@ public:
         const auto pointed_to = ptr_internal(s);
 
         if (pointed_to == 0) {
-            return sol::make_object(s, sol::nil);
+            return sol::make_object(s, sol::lua_nil);
         }
 
         if (m_type->to()->is_a<genny::Struct>()) {
@@ -291,7 +291,7 @@ public:
             return sol::make_object(s, standalone_parse(s, adjusted_to, m_type->to(), m_from));
         }
 
-        return sol::make_object(s, sol::nil);
+        return sol::make_object(s, sol::lua_nil);
     }
 
     void new_index(sol::this_state s, sol::object key, sol::object value) override {
@@ -321,7 +321,7 @@ public:
         const auto pointed_to = ptr_internal(s);
 
         if (pointed_to == 0) {
-            return sol::make_object(s, sol::nil);
+            return sol::make_object(s, sol::lua_nil);
         }
 
         return sol::make_object(s, standalone_parse(s, pointed_to, m_type->to(), m_from));
@@ -380,7 +380,7 @@ sol::object standalone_parse(sol::this_state s, uintptr_t address, genny::Type* 
         address = lua_reader(s, address, sizeof(void*)).get<uintptr_t>();
 
         if (address == 0) {
-            return sol::make_object(s, sol::nil);
+            return sol::make_object(s, sol::lua_nil);
         }
 
         if (metadata.empty()) {
@@ -390,7 +390,7 @@ sol::object standalone_parse(sol::this_state s, uintptr_t address, genny::Type* 
 
     if (metadata.empty()){
         throw std::runtime_error("No metadata for type");
-        return sol::make_object(s, sol::nil);
+        return sol::make_object(s, sol::lua_nil);
     }
 
     for (auto&& md : metadata) {
@@ -413,10 +413,22 @@ sol::object standalone_parse(sol::this_state s, uintptr_t address, genny::Type* 
                 return sol::make_object(s, (int32_t)lua_reader(s, address, 4).get<uint32_t>());
             case "i64"_fnv:
                 return sol::make_object(s, (int64_t)lua_reader(s, address, 8).get<uint64_t>());
-            case "f32"_fnv:
+            case "f32"_fnv: {
+#if defined(__cpp_lib_bit_cast)
                 return sol::make_object(s, std::bit_cast<float>(lua_reader(s, address, 4).get<uint32_t>()));
-            case "f64"_fnv:
+#else
+                auto value = lua_reader(s, address, 4).get<uint32_t>();
+                return sol::make_object(s, *(float*)&value);
+#endif
+            }
+            case "f64"_fnv: {
+#if defined(__cpp_lib_bit_cast)
                 return sol::make_object(s, std::bit_cast<double>(lua_reader(s, address, 8).get<uint64_t>()));
+#else
+                auto value = lua_reader(s, address, 8).get<uint64_t>();
+                return sol::make_object(s, *(double*)&value);
+#endif
+            }
             case "utf8*"_fnv:
                 return sol::make_object(s, lua_string_reader(s, address, 1).get<const char*>());
             default:
@@ -424,7 +436,7 @@ sol::object standalone_parse(sol::this_state s, uintptr_t address, genny::Type* 
         }
     }
 
-    return sol::make_object(s, sol::nil);
+    return sol::make_object(s, sol::lua_nil);
 }
 
 sol::object parse(sol::this_state s, std::string data) {

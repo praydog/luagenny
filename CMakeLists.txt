@@ -46,12 +46,12 @@ endif()
 
 include(FetchContent)
 
-message(STATUS "Fetching sdkgenny (e45198d46e17de4b251704122b8c74837cae773e)...")
+message(STATUS "Fetching sdkgenny (e397e2b0ee8224cc2c0332aebcd7c311d9a0c05a)...")
 FetchContent_Declare(sdkgenny
 	GIT_REPOSITORY
 		"https://github.com/cursey/sdkgenny.git"
 	GIT_TAG
-		e45198d46e17de4b251704122b8c74837cae773e
+		e397e2b0ee8224cc2c0332aebcd7c311d9a0c05a
 )
 FetchContent_MakeAvailable(sdkgenny)
 
@@ -119,9 +119,18 @@ if(LUAGENNY_BUILD_STATIC) # static
 		cxx_std_20
 	)
 
-	target_compile_options(luagenny_static PUBLIC
-		"/bigobj"
-	)
+	if(MSVC) # msvc
+		target_compile_options(luagenny_static PUBLIC
+			"/bigobj"
+		)
+	endif()
+
+	if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_C_COMPILER_ID MATCHES "Clang") # clang
+		target_compile_options(luagenny_static PUBLIC
+			-fdeclspec
+			-Wno-ignored-attributes
+		)
+	endif()
 
 	target_include_directories(luagenny_static PUBLIC
 		include
@@ -202,9 +211,18 @@ if(NOT LUAGENNY_BUILD_STATIC) # shared
 		cxx_std_20
 	)
 
-	target_compile_options(luagenny_shared PUBLIC
-		"/bigobj"
-	)
+	if(MSVC) # msvc
+		target_compile_options(luagenny_shared PUBLIC
+			"/bigobj"
+		)
+	endif()
+
+	if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_C_COMPILER_ID MATCHES "Clang") # clang
+		target_compile_options(luagenny_shared PUBLIC
+			-fdeclspec
+			-Wno-ignored-attributes
+		)
+	endif()
 
 	target_include_directories(luagenny_shared PUBLIC
 		include

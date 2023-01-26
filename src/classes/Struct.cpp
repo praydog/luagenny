@@ -60,7 +60,7 @@ void create_bindings(sol::table sdkgenny) {
             static std::unordered_map<std::string, ft> find_in_parents_functions = []() {
                 std::unordered_map<std::string, ft> find_in_parents_functions{};
                 (find_in_parents_functions.emplace(Args::name().data(), [] (sol::this_state s, genny::Struct& st, std::string_view target_name) -> sol::object {
-                    return sol::make_object(s, st.find_in_parents<Args::Type>(target_name));
+                    return sol::make_object(s, st.find_in_parents<typename Args::Type>(target_name));
                 }), ...);
 
                 return find_in_parents_functions;
@@ -70,7 +70,7 @@ void create_bindings(sol::table sdkgenny) {
                 return it->second(s, st, target_name);
             }
 
-            return sol::make_object(s, sol::nil);
+            return sol::make_object(s, sol::lua_nil);
         }
     );
 

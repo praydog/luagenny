@@ -16,7 +16,7 @@ packages = [
 
 [fetch-content.sdkgenny]
 git = "https://github.com/cursey/sdkgenny.git"
-tag = "e45198d46e17de4b251704122b8c74837cae773e" 
+tag = "e397e2b0ee8224cc2c0332aebcd7c311d9a0c05a" 
 
 
 [find-package]
@@ -44,7 +44,8 @@ include-directories = [
     "include",
 ]
 compile-features = ["cxx_std_20"]
-compile-options = ["/bigobj"]
+msvc.compile-options = ["/bigobj"]
+clang.compile-options = ["-fdeclspec", "-Wno-ignored-attributes"]
 compile-definitions = []
 alias = "luagenny::luagenny"
 
@@ -67,7 +68,8 @@ include-directories = [
     "include",
 ]
 compile-features = ["cxx_std_20"]
-compile-options = ["/bigobj"]
+msvc.compile-options = ["/bigobj"]
+clang.compile-options = ["-fdeclspec", "-Wno-ignored-attributes"]
 compile-definitions = ["LUAGENNY_EXPORTS"]
 alias = "luagenny::luagenny"
 
