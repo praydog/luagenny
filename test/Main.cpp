@@ -26,7 +26,7 @@ extern "C" {
 
 #include <LuaGenny.h>
 
-#include "GennyParser.hpp"
+#include <sdkgenny_parser.hpp>
 
 #pragma pack(push,1)
 enum Place { EARTH = 1, MOON = 2, MARS = 3 };
@@ -203,16 +203,16 @@ struct RTTITest 0x100 {
 }
 )";
 
-std::unique_ptr<genny::Sdk> parse_gennyfile() {
-    auto sdk = std::make_unique<genny::Sdk>();
+std::unique_ptr<sdkgenny::Sdk> parse_gennyfile() {
+    auto sdk = std::make_unique<sdkgenny::Sdk>();
 
-    genny::parser::State s{};
+    sdkgenny::parser::State s{};
     s.parents.push_back(sdk->global_ns());
 
     tao::pegtl::memory_input in{gennyfile, "text"};
 
     try {
-        if (tao::pegtl::parse<genny::parser::Grammar, genny::parser::Action>(in, s)) {
+        if (tao::pegtl::parse<sdkgenny::parser::Grammar, sdkgenny::parser::Action>(in, s)) {
         }
     } catch (const std::exception& e) {
         std::cout << "Error: " << e.what() << std::endl;
