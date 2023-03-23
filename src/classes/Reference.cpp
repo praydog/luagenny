@@ -6,7 +6,7 @@ extern "C" {
 
 #include <sol/sol.hpp>
 
-#include "Genny.hpp"
+#include "sdkgenny.hpp"
 #include "ClassMacros.hpp"
 #include "Struct.hpp"
 
@@ -14,9 +14,9 @@ namespace luagenny {
 int open_reference(lua_State* l) {
     sol::table sdkgenny = sol::stack::pop<sol::table>(l);
 
-    sdkgenny.new_usertype<genny::Reference>("Reference",
+    sdkgenny.new_usertype<sdkgenny::Reference>("Reference",
         sol::base_classes, sol::bases<GENNY_TYPE_BASES>(),
-        MULTIFUNCTION(genny::Reference, to, genny::Type*)
+        MULTIFUNCTION(sdkgenny::Reference, to, sdkgenny::Type*)
     );
 
     return 0;

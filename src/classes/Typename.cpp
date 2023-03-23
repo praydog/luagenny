@@ -6,7 +6,7 @@ extern "C" {
 
 #include <sol/sol.hpp>
 
-#include "Genny.hpp"
+#include "sdkgenny.hpp"
 #include "ClassMacros.hpp"
 #include "Typename.hpp"
 
@@ -14,9 +14,9 @@ namespace luagenny {
 int open_typename(lua_State* l) {
     sol::table sdkgenny = sol::stack::pop<sol::table>(l);
 
-    sdkgenny.new_usertype<genny::Typename>("Typename",
-        sol::base_classes, sol::bases<genny::Object>(),
-        MULTIFUNCTION(genny::Typename, simple_typename_generation, bool)
+    sdkgenny.new_usertype<sdkgenny::Typename>("Typename",
+        sol::base_classes, sol::bases<sdkgenny::Object>(),
+        MULTIFUNCTION(sdkgenny::Typename, simple_typename_generation, bool)
     );
 
     return 0;

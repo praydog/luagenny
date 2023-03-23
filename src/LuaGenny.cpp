@@ -25,8 +25,8 @@ extern "C" {
 #define _MSC_VER _MSC_OLD_VER
 #endif
 
-#include <Genny.hpp>
-#include <GennyParser.hpp>
+#include <sdkgenny.hpp>
+#include <sdkgenny_parser.hpp>
 
 #include "classes/ClassMacros.hpp"
 #include "classes/Sdk.hpp"
@@ -64,7 +64,7 @@ constexpr auto operator "" _fnv(const char* s, size_t) {
 }
 
 namespace api {
-sol::object standalone_parse(sol::this_state s, uintptr_t address, genny::Type* t, genny::Variable* v = nullptr);
+sol::object standalone_parse(sol::this_state s, uintptr_t address, sdkgenny::Type* t, sdkgenny::Variable* v = nullptr);
 
 sol::object reader(sol::this_state s, uintptr_t address, size_t size) {
     switch(size) {
@@ -137,8 +137,8 @@ void writer(sol::this_state s, uintptr_t address, size_t size, sol::object value
     }
 }
 
-std::optional<std::tuple<genny::Variable*, size_t>> get_variable(genny::Struct* s, const std::string& name, size_t additional_offset = 0) {
-    auto v = s->find<genny::Variable>(name);
+std::optional<std::tuple<sdkgenny::Variable*, size_t>> get_variable(sdkgenny::Struct* s, const std::string& name, size_t additional_offset = 0) {
+    auto v = s->find<sdkgenny::Variable>(name);
 
     if (v != nullptr) {
         return std::make_tuple(v, additional_offset);
@@ -184,9 +184,9 @@ protected:
     T* m_type{};
 };
 
-class StructOverlay : public Overlay<genny::Struct> {
+class StructOverlay : public Overlay<sdkgenny::Struct> {
 public:
-    StructOverlay(uintptr_t address, genny::Struct* s) 
+    StructOverlay(uintptr_t address, sdkgenny::Struct* s) 
         : Overlay(address, s)
     {
     }
@@ -242,7 +242,7 @@ public:
     }
 
 protected:
-    uintptr_t get_final_address(genny::Variable* v, size_t additional_offset = 0) const {
+    uintptr_t get_final_address(sdkgenny::Variable* v, size_t additional_offset = 0) const {
          const auto offset = v->offset();
 
         if (offset > m_type->size()) {
@@ -253,13 +253,13 @@ protected:
         return m_address + offset + additional_offset;
     }
 
-    sol::object parse_and_read(sol::this_state s, genny::Variable* v, size_t additional_offset = 0) {
+    sol::object parse_and_read(sol::this_state s, sdkgenny::Variable* v, size_t additional_offset = 0) {
         const auto address = get_final_address(v, additional_offset);
 
         return sol::make_object(s, standalone_parse(s, address, v->type(), v));
     }
 
-    void write(sol::this_state s, genny::Variable* v, size_t additional_offset, sol::object value) {
+    void write(sol::this_state s, sdkgenny::Variable* v, size_t additional_offset, sol::object value) {
         const auto address = get_final_address(v, additional_offset);
 
         sol::function lua_writer = sol::state_view{s}["sdkgenny_writer"];
@@ -267,9 +267,9 @@ protected:
     }
 };
 
-class PointerOverlay : public Overlay<genny::Pointer> {
+class PointerOverlay : public Overlay<sdkgenny::Pointer> {
 public:
-    PointerOverlay(uintptr_t address, genny::Pointer* p, genny::Variable* from = nullptr) 
+    PointerOverlay(uintptr_t address, sdkgenny::Pointer* p, sdkgenny::Variable* from = nullptr) 
         : Overlay(address, p),
         m_from{from}
     {
@@ -282,8 +282,8 @@ public:
             return sol::make_object(s, sol::lua_nil);
         }
 
-        if (m_type->to()->is_a<genny::Struct>()) {
-            return StructOverlay{pointed_to, dynamic_cast<genny::Struct*>(m_type->to())}.index(s, key);
+        if (m_type->to()->is_a<sdkgenny::Struct>()) {
+            return StructOverlay{pointed_to, dynamic_cast<sdkgenny::Struct*>(m_type->to())}.index(s, key);
         }
 
         if (key.is<int>()) {
@@ -301,8 +301,8 @@ public:
             return;
         }
 
-        if (m_type->to()->is_a<genny::Struct>()) {
-            StructOverlay{pointed_to, dynamic_cast<genny::Struct*>(m_type->to())}.new_index(s, key, value);
+        if (m_type->to()->is_a<sdkgenny::Struct>()) {
+            StructOverlay{pointed_to, dynamic_cast<sdkgenny::Struct*>(m_type->to())}.new_index(s, key, value);
             return;
         }
 
@@ -345,20 +345,20 @@ protected:
         return deref_address;
     }
 
-    genny::Variable* m_from{};
+    sdkgenny::Variable* m_from{};
 };
 
-sol::object standalone_parse(sol::this_state s, uintptr_t address, genny::Type* t, genny::Variable* v) {
+sol::object standalone_parse(sol::this_state s, uintptr_t address, sdkgenny::Type* t, sdkgenny::Variable* v) {
     if (t == nullptr) {
         return sol::make_object(s, address);
     }
 
-    if (t->is_a<genny::Struct>()) {
-        return sol::make_object(s, StructOverlay{address, dynamic_cast<genny::Struct*>(t)});
+    if (t->is_a<sdkgenny::Struct>()) {
+        return sol::make_object(s, StructOverlay{address, dynamic_cast<sdkgenny::Struct*>(t)});
     }
 
-    const auto is_pointer = t->is_a<genny::Pointer>();
-    genny::Type* pointer_t = nullptr;
+    const auto is_pointer = t->is_a<sdkgenny::Pointer>();
+    sdkgenny::Type* pointer_t = nullptr;
 
     auto metadata = t->metadata();
 
@@ -370,10 +370,10 @@ sol::object standalone_parse(sol::this_state s, uintptr_t address, genny::Type* 
     sol::function lua_string_reader = sol::state_view{s}["sdkgenny_string_reader"];
 
     if (is_pointer) {
-        const auto p = dynamic_cast<genny::Pointer*>(t);
+        const auto p = dynamic_cast<sdkgenny::Pointer*>(t);
         const auto to = p->to();
 
-        if (to->is_a<genny::Struct>() || to->is_a<genny::Pointer>() || metadata.empty()) {
+        if (to->is_a<sdkgenny::Struct>() || to->is_a<sdkgenny::Pointer>() || metadata.empty()) {
             return sol::make_object(s, PointerOverlay{address, p, v});
         }
 
@@ -440,13 +440,13 @@ sol::object standalone_parse(sol::this_state s, uintptr_t address, genny::Type* 
 }
 
 sol::object parse(sol::this_state s, std::string data) {
-    auto sdk = std::make_unique<genny::Sdk>();
+    auto sdk = std::make_unique<sdkgenny::Sdk>();
 
-    genny::parser::State state{};
+    sdkgenny::parser::State state{};
     state.parents.push_back(sdk->global_ns());
 
     tao::pegtl::memory_input in{data, "text"};
-    tao::pegtl::parse<genny::parser::Grammar, genny::parser::Action>(in, state);
+    tao::pegtl::parse<sdkgenny::parser::Grammar, sdkgenny::parser::Action>(in, state);
 
     return sol::make_object(s, std::move(sdk));
 }
@@ -470,8 +470,8 @@ int open(lua_State* l) {
     sdkgenny["parse_file"] = &api::parse_file;
 
     sdkgenny.new_usertype<api::StructOverlay>("StructOverlay",
-        sol::meta_function::construct, sol::constructors<api::StructOverlay(uintptr_t, genny::Struct*)>(),
-        sol::call_constructor, sol::constructors<api::StructOverlay(uintptr_t, genny::Struct*)>(),
+        sol::meta_function::construct, sol::constructors<api::StructOverlay(uintptr_t, sdkgenny::Struct*)>(),
+        sol::call_constructor, sol::constructors<api::StructOverlay(uintptr_t, sdkgenny::Struct*)>(),
         "type", &api::StructOverlay::type_,
         "address", &api::StructOverlay::address,
         sol::meta_function::index, &api::StructOverlay::index,
@@ -479,8 +479,8 @@ int open(lua_State* l) {
     );
 
     sdkgenny.new_usertype<api::PointerOverlay>("PointerOverlay",
-        sol::meta_function::construct, sol::constructors<api::PointerOverlay(uintptr_t, genny::Pointer*)>(),
-        sol::call_constructor, sol::constructors<api::PointerOverlay(uintptr_t, genny::Pointer*)>(),
+        sol::meta_function::construct, sol::constructors<api::PointerOverlay(uintptr_t, sdkgenny::Pointer*)>(),
+        sol::call_constructor, sol::constructors<api::PointerOverlay(uintptr_t, sdkgenny::Pointer*)>(),
         "type", &api::PointerOverlay::type_,
         "address", &api::PointerOverlay::address, // address of the pointer, not what it points to. Same as &ptr.
         "d", &api::PointerOverlay::d, // Resolve the pointed to address into a pointer or value. Same as ptr[0].
@@ -504,22 +504,22 @@ int open(lua_State* l) {
     sdkgenny.push();
     luagenny::open_type(l);
 
-    sdkgenny.new_usertype<genny::GenericType>("GenericType",
+    sdkgenny.new_usertype<sdkgenny::GenericType>("GenericType",
         sol::base_classes, sol::bases<GENNY_TYPE_BASES>()
     );
 
     sdkgenny.push();
     luagenny::open_struct(l);
 
-    sdkgenny.new_usertype<genny::Class>("Class",
-        sol::base_classes, sol::bases<genny::Struct, GENNY_TYPE_BASES>()
+    sdkgenny.new_usertype<sdkgenny::Class>("Class",
+        sol::base_classes, sol::bases<sdkgenny::Struct, GENNY_TYPE_BASES>()
     );
 
     sdkgenny.push();
     luagenny::open_enum(l);
 
-    sdkgenny.new_usertype<genny::EnumClass>("EnumClass",
-        sol::base_classes, sol::bases<genny::Enum, GENNY_TYPE_BASES>()
+    sdkgenny.new_usertype<sdkgenny::EnumClass>("EnumClass",
+        sol::base_classes, sol::bases<sdkgenny::Enum, GENNY_TYPE_BASES>()
     );
 
     sdkgenny.push();
@@ -528,7 +528,7 @@ int open(lua_State* l) {
     sdkgenny.push();
     luagenny::open_reference(l);
 
-    sdkgenny.new_usertype<genny::Pointer>("Pointer",
+    sdkgenny.new_usertype<sdkgenny::Pointer>("Pointer",
         sol::base_classes, sol::bases<GENNY_REFERENCE_BASES>()
     );
 
@@ -541,8 +541,8 @@ int open(lua_State* l) {
     sdkgenny.push();
     luagenny::open_virtual_function(l);
 
-    sdkgenny.new_usertype<genny::StaticFunction>("StaticFunction",
-        sol::base_classes, sol::bases<genny::Function, genny::Object>()
+    sdkgenny.new_usertype<sdkgenny::StaticFunction>("StaticFunction",
+        sol::base_classes, sol::bases<sdkgenny::Function, sdkgenny::Object>()
     );
 
     sdkgenny.push();

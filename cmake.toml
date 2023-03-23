@@ -16,7 +16,7 @@ packages = [
 
 [fetch-content.sdkgenny]
 git = "https://github.com/cursey/sdkgenny.git"
-tag = "e397e2b0ee8224cc2c0332aebcd7c311d9a0c05a" 
+tag = "5a6768a13d7d929cc7495d95d5f604593efcfd50" 
 
 
 [find-package]

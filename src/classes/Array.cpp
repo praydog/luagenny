@@ -6,7 +6,7 @@ extern "C" {
 
 #include <sol/sol.hpp>
 
-#include "Genny.hpp"
+#include "sdkgenny.hpp"
 #include "ClassMacros.hpp"
 #include "Array.hpp"
 
@@ -14,10 +14,10 @@ namespace luagenny {
 int open_array(lua_State* l) {
     sol::table sdkgenny = sol::stack::pop<sol::table>(l);
 
-    sdkgenny.new_usertype<genny::Array>("Array",
+    sdkgenny.new_usertype<sdkgenny::Array>("Array",
         sol::base_classes, sol::bases<GENNY_TYPE_BASES>(),
-        MULTIFUNCTION(genny::Array, of, genny::Type*),
-        MULTIFUNCTION(genny::Array, count, int)
+        MULTIFUNCTION(sdkgenny::Array, of, sdkgenny::Type*),
+        MULTIFUNCTION(sdkgenny::Array, count, int)
     );
 
     return 0;

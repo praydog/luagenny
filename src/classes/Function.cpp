@@ -6,7 +6,7 @@ extern "C" {
 
 #include <sol/sol.hpp>
 
-#include "Genny.hpp"
+#include "sdkgenny.hpp"
 #include "ClassMacros.hpp"
 #include "Function.hpp"
 
@@ -14,13 +14,13 @@ namespace luagenny {
 int open_function(lua_State* l) {
     sol::table sdkgenny = sol::stack::pop<sol::table>(l);
 
-    sdkgenny.new_usertype<genny::Function>("Function",
-        sol::base_classes, sol::bases<genny::Object>(),
-        MULTIFUNCTION(genny::Function, returns, genny::Type*),
-        MULTIFUNCTION(genny::Function, procedure, std::string),
-        "dependencies", &genny::Function::dependencies,
-        PARAMFUNCTION(genny::Function, depends_on, genny::Type*),
-        MULTIFUNCTION(genny::Function, defined, bool)
+    sdkgenny.new_usertype<sdkgenny::Function>("Function",
+        sol::base_classes, sol::bases<sdkgenny::Object>(),
+        MULTIFUNCTION(sdkgenny::Function, returns, sdkgenny::Type*),
+        MULTIFUNCTION(sdkgenny::Function, procedure, std::string),
+        "dependencies", &sdkgenny::Function::dependencies,
+        PARAMFUNCTION(sdkgenny::Function, depends_on, sdkgenny::Type*),
+        MULTIFUNCTION(sdkgenny::Function, defined, bool)
     );
 
     return 0;
