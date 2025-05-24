@@ -54,7 +54,14 @@ void create_bindings(sol::table sdkgenny) {
         "function", &sdkgenny::Struct::function,
         "virtual_function", &sdkgenny::Struct::virtual_function,
         "static_function", &sdkgenny::Struct::static_function,
-        "bitfield", &sdkgenny::Struct::bitfield,
+        "bitfield", [] (sdkgenny::Struct& st, int offset, sol::this_state s) -> sol::table {
+            auto bitfield_vars = st.bitfield(offset);
+            sol::table result = sol::state_view(s).create_table();
+            for (const auto& [bit_offset, var] : bitfield_vars) {
+                result[bit_offset] = var;
+            }
+            return result;
+        },
         "find_in_parents", [] (sol::this_state s, sdkgenny::Struct& st, const char* name, const char* target_name) -> sol::object {
             using ft = std::function<sol::object(sol::this_state s, sdkgenny::Struct&, std::string_view)>;
             static std::unordered_map<std::string, ft> find_in_parents_functions = []() {
