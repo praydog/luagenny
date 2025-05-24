@@ -35,8 +35,8 @@ project(luagenny)
 
 if(CMKR_ROOT_PROJECT AND NOT CMKR_DISABLE_VCPKG)
 	include(FetchContent)
-	message(STATUS "Fetching vcpkg (2022.08.15)...")
-	FetchContent_Declare(vcpkg URL "https://github.com/microsoft/vcpkg/archive/refs/tags/2022.08.15.tar.gz")
+	message(STATUS "Fetching vcpkg (2025.04.09)...")
+	FetchContent_Declare(vcpkg URL "https://github.com/microsoft/vcpkg/archive/refs/tags/2025.04.09.tar.gz")
 	FetchContent_GetProperties(vcpkg)
 	if(NOT vcpkg_POPULATED)
 		FetchContent_Populate(vcpkg)
@@ -138,7 +138,7 @@ if(LUAGENNY_BUILD_STATIC) # static
 
 	target_link_libraries(luagenny_static PUBLIC
 		lua
-		sol2
+		sol2::sol2
 		sdkgenny
 	)
 
@@ -230,7 +230,7 @@ if(NOT LUAGENNY_BUILD_STATIC) # shared
 
 	target_link_libraries(luagenny_shared PUBLIC
 		lua
-		sol2
+		sol2::sol2
 		sdkgenny
 	)
 
@@ -279,7 +279,7 @@ target_include_directories(repl PRIVATE
 
 target_link_libraries(repl PRIVATE
 	lua
-	sol2
+	sol2::sol2
 	luagenny::luagenny
 	sdkgenny::sdkgenny
 )

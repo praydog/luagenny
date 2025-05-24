@@ -7,7 +7,7 @@ message("${LUAGENNY_BUILD_STATIC}")
 """
 
 [vcpkg]
-version = "2022.08.15"
+version = "2025.04.09"
 packages = [
     "pegtl",
     "lua",
@@ -37,7 +37,7 @@ sources = [
 ]
 link-libraries = [
     "lua",
-    "sol2",
+    "sol2::sol2",
     "sdkgenny"
 ]
 include-directories = [
@@ -61,7 +61,7 @@ sources = [
 ]
 link-libraries = [
     "lua",
-    "sol2",
+    "sol2::sol2",
     "sdkgenny"
 ]
 include-directories = [
@@ -84,7 +84,7 @@ include-directories = [
 ]
 link-libraries = [
     "lua",
-    "sol2",
+    "sol2::sol2",
     "luagenny::luagenny",
     "sdkgenny::sdkgenny"
 ]
