@@ -7,12 +7,11 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
 	message(FATAL_ERROR "In-tree builds are not supported. Run CMake from a separate directory: cmake -B build")
 endif()
 
-# Regenerate CMakeLists.txt automatically in the root project
 set(CMKR_ROOT_PROJECT OFF)
 if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
 	set(CMKR_ROOT_PROJECT ON)
 
-	# Bootstrap cmkr
+	# Bootstrap cmkr and automatically regenerate CMakeLists.txt
 	include(cmkr.cmake OPTIONAL RESULT_VARIABLE CMKR_INCLUDE_RESULT)
 	if(CMKR_INCLUDE_RESULT)
 		cmkr()
@@ -20,29 +19,53 @@ if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
 
 	# Enable folder support
 	set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+
+	# Create a configure-time dependency on cmake.toml to improve IDE support
+	set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS cmake.toml)
 endif()
 
-# Create a configure-time dependency on cmake.toml to improve IDE support
-if(CMKR_ROOT_PROJECT)
-	configure_file(cmake.toml cmake.toml COPYONLY)
-endif()
-
+# vcpkg settings
 add_compile_options($<$<CXX_COMPILER_ID:MSVC>:/MP>)
 option(LUAGENNY_BUILD_STATIC OFF)
 message("${LUAGENNY_BUILD_STATIC}")
 
-project(luagenny)
+project(luagenny
+	LANGUAGES
+		C
+		CXX
+)
 
 if(CMKR_ROOT_PROJECT AND NOT CMKR_DISABLE_VCPKG)
 	include(FetchContent)
-	message(STATUS "Fetching vcpkg (2025.04.09)...")
-	FetchContent_Declare(vcpkg URL "https://github.com/microsoft/vcpkg/archive/refs/tags/2025.04.09.tar.gz")
-	FetchContent_GetProperties(vcpkg)
-	if(NOT vcpkg_POPULATED)
-		FetchContent_Populate(vcpkg)
-		include("${vcpkg_SOURCE_DIR}/scripts/buildsystems/vcpkg.cmake")
+	# Fix warnings about DOWNLOAD_EXTRACT_TIMESTAMP
+	if(POLICY CMP0135)
+		cmake_policy(SET CMP0135 NEW)
 	endif()
+	message(STATUS "Fetching vcpkg (2025.04.09)...")
+	FetchContent_Declare(vcpkg
+		URL
+			"https://github.com/microsoft/vcpkg/archive/refs/tags/2025.04.09.tar.gz"
+		SUBBUILD_DIR
+			"CMakeFiles/vcpkg-subbuild"
+		SOURCE_DIR
+			vcpkg
+		BINARY_DIR
+			"CMakeFiles/vcpkg-build"
+	)
+	FetchContent_MakeAvailable(vcpkg)
+
+	if(CMAKE_HOST_SYSTEM_NAME STREQUAL Darwin AND CMAKE_OSX_ARCHITECTURES STREQUAL "")
+		set(CMAKE_OSX_ARCHITECTURES ${CMAKE_HOST_SYSTEM_PROCESSOR} CACHE STRING "" FORCE)
+	endif()
+	include("${vcpkg_SOURCE_DIR}/scripts/buildsystems/vcpkg.cmake")
 endif()
+
+# Packages
+find_package(pegtl REQUIRED)
+
+find_package(lua)
+
+find_package(sol2)
 
 include(FetchContent)
 
@@ -55,66 +78,48 @@ FetchContent_Declare(sdkgenny
 )
 FetchContent_MakeAvailable(sdkgenny)
 
-# Packages
-find_package(pegtl REQUIRED)
-
-find_package(lua)
-
-find_package(sol2)
-
-# Target luagenny_static
+# Target: luagenny_static
 if(LUAGENNY_BUILD_STATIC) # static
-	set(CMKR_TARGET luagenny_static)
-	set(luagenny_static_SOURCES "")
-
-	list(APPEND luagenny_static_SOURCES
+	set(luagenny_static_SOURCES
+		cmake.toml
 		"src/LuaGenny.cpp"
 		"src/classes/Array.cpp"
-		"src/classes/Constant.cpp"
-		"src/classes/Enum.cpp"
-		"src/classes/Function.cpp"
-		"src/classes/Namespace.cpp"
-		"src/classes/Object.cpp"
-		"src/classes/Parameter.cpp"
-		"src/classes/Reference.cpp"
-		"src/classes/Sdk.cpp"
-		"src/classes/Struct.cpp"
-		"src/classes/Type.cpp"
-		"src/classes/Typename.cpp"
-		"src/classes/Variable.cpp"
-		"src/classes/VirtualFunction.cpp"
 		"src/classes/Array.hpp"
 		"src/classes/ClassMacros.hpp"
+		"src/classes/Constant.cpp"
 		"src/classes/Constant.hpp"
+		"src/classes/Enum.cpp"
 		"src/classes/Enum.hpp"
+		"src/classes/Function.cpp"
 		"src/classes/Function.hpp"
+		"src/classes/Namespace.cpp"
 		"src/classes/Namespace.hpp"
+		"src/classes/Object.cpp"
 		"src/classes/Object.hpp"
+		"src/classes/Parameter.cpp"
 		"src/classes/Parameter.hpp"
+		"src/classes/Reference.cpp"
 		"src/classes/Reference.hpp"
+		"src/classes/Sdk.cpp"
 		"src/classes/Sdk.hpp"
+		"src/classes/Struct.cpp"
 		"src/classes/Struct.hpp"
+		"src/classes/Type.cpp"
 		"src/classes/Type.hpp"
+		"src/classes/Typename.cpp"
 		"src/classes/Typename.hpp"
+		"src/classes/Variable.cpp"
 		"src/classes/Variable.hpp"
+		"src/classes/VirtualFunction.cpp"
 		"src/classes/VirtualFunction.hpp"
 	)
 
-	list(APPEND luagenny_static_SOURCES
-		cmake.toml
-	)
-
-	set(CMKR_SOURCES ${luagenny_static_SOURCES})
 	add_library(luagenny_static STATIC)
 
-	if(luagenny_static_SOURCES)
-		target_sources(luagenny_static PRIVATE ${luagenny_static_SOURCES})
-	endif()
-
+	target_sources(luagenny_static PRIVATE ${luagenny_static_SOURCES})
 	source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${luagenny_static_SOURCES})
 
 	add_library(luagenny::luagenny ALIAS luagenny_static)
-
 	target_compile_features(luagenny_static PUBLIC
 		cxx_std_20
 	)
@@ -125,7 +130,7 @@ if(LUAGENNY_BUILD_STATIC) # static
 		)
 	endif()
 
-	if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_C_COMPILER_ID MATCHES "Clang") # clang
+	if((CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND NOT CMAKE_CXX_COMPILER_FRONTEND_VARIANT MATCHES "^MSVC$") OR (CMAKE_C_COMPILER_ID MATCHES "Clang" AND NOT CMAKE_C_COMPILER_FRONTEND_VARIANT MATCHES "^MSVC$")) # clang
 		target_compile_options(luagenny_static PUBLIC
 			-fdeclspec
 			-Wno-ignored-attributes
@@ -147,59 +152,46 @@ if(LUAGENNY_BUILD_STATIC) # static
 			luagenny
 	)
 
-	unset(CMKR_TARGET)
-	unset(CMKR_SOURCES)
 endif()
-
-# Target luagenny_shared
+# Target: luagenny_shared
 if(NOT LUAGENNY_BUILD_STATIC) # shared
-	set(CMKR_TARGET luagenny_shared)
-	set(luagenny_shared_SOURCES "")
-
-	list(APPEND luagenny_shared_SOURCES
+	set(luagenny_shared_SOURCES
+		cmake.toml
 		"src/LuaGenny.cpp"
 		"src/classes/Array.cpp"
-		"src/classes/Constant.cpp"
-		"src/classes/Enum.cpp"
-		"src/classes/Function.cpp"
-		"src/classes/Namespace.cpp"
-		"src/classes/Object.cpp"
-		"src/classes/Parameter.cpp"
-		"src/classes/Reference.cpp"
-		"src/classes/Sdk.cpp"
-		"src/classes/Struct.cpp"
-		"src/classes/Type.cpp"
-		"src/classes/Typename.cpp"
-		"src/classes/Variable.cpp"
-		"src/classes/VirtualFunction.cpp"
 		"src/classes/Array.hpp"
 		"src/classes/ClassMacros.hpp"
+		"src/classes/Constant.cpp"
 		"src/classes/Constant.hpp"
+		"src/classes/Enum.cpp"
 		"src/classes/Enum.hpp"
+		"src/classes/Function.cpp"
 		"src/classes/Function.hpp"
+		"src/classes/Namespace.cpp"
 		"src/classes/Namespace.hpp"
+		"src/classes/Object.cpp"
 		"src/classes/Object.hpp"
+		"src/classes/Parameter.cpp"
 		"src/classes/Parameter.hpp"
+		"src/classes/Reference.cpp"
 		"src/classes/Reference.hpp"
+		"src/classes/Sdk.cpp"
 		"src/classes/Sdk.hpp"
+		"src/classes/Struct.cpp"
 		"src/classes/Struct.hpp"
+		"src/classes/Type.cpp"
 		"src/classes/Type.hpp"
+		"src/classes/Typename.cpp"
 		"src/classes/Typename.hpp"
+		"src/classes/Variable.cpp"
 		"src/classes/Variable.hpp"
+		"src/classes/VirtualFunction.cpp"
 		"src/classes/VirtualFunction.hpp"
 	)
 
-	list(APPEND luagenny_shared_SOURCES
-		cmake.toml
-	)
-
-	set(CMKR_SOURCES ${luagenny_shared_SOURCES})
 	add_library(luagenny_shared SHARED)
 
-	if(luagenny_shared_SOURCES)
-		target_sources(luagenny_shared PRIVATE ${luagenny_shared_SOURCES})
-	endif()
-
+	target_sources(luagenny_shared PRIVATE ${luagenny_shared_SOURCES})
 	source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${luagenny_shared_SOURCES})
 
 	add_library(luagenny::luagenny ALIAS luagenny_shared)
@@ -217,7 +209,7 @@ if(NOT LUAGENNY_BUILD_STATIC) # shared
 		)
 	endif()
 
-	if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_C_COMPILER_ID MATCHES "Clang") # clang
+	if((CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND NOT CMAKE_CXX_COMPILER_FRONTEND_VARIANT MATCHES "^MSVC$") OR (CMAKE_C_COMPILER_ID MATCHES "Clang" AND NOT CMAKE_C_COMPILER_FRONTEND_VARIANT MATCHES "^MSVC$")) # clang
 		target_compile_options(luagenny_shared PUBLIC
 			-fdeclspec
 			-Wno-ignored-attributes
@@ -239,34 +231,16 @@ if(NOT LUAGENNY_BUILD_STATIC) # shared
 			luagenny
 	)
 
-	unset(CMKR_TARGET)
-	unset(CMKR_SOURCES)
 endif()
-
-# Target repl
-set(CMKR_TARGET repl)
-set(repl_SOURCES "")
-
-list(APPEND repl_SOURCES
+# Target: repl
+set(repl_SOURCES
+	cmake.toml
 	"test/Main.cpp"
 )
 
-list(APPEND repl_SOURCES
-	cmake.toml
-)
-
-set(CMKR_SOURCES ${repl_SOURCES})
 add_executable(repl)
 
-if(repl_SOURCES)
-	target_sources(repl PRIVATE ${repl_SOURCES})
-endif()
-
-get_directory_property(CMKR_VS_STARTUP_PROJECT DIRECTORY ${PROJECT_SOURCE_DIR} DEFINITION VS_STARTUP_PROJECT)
-if(NOT CMKR_VS_STARTUP_PROJECT)
-	set_property(DIRECTORY ${PROJECT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT repl)
-endif()
-
+target_sources(repl PRIVATE ${repl_SOURCES})
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${repl_SOURCES})
 
 target_compile_features(repl PRIVATE
@@ -284,8 +258,10 @@ target_link_libraries(repl PRIVATE
 	sdkgenny::sdkgenny
 )
 
-unset(CMKR_TARGET)
-unset(CMKR_SOURCES)
+get_directory_property(CMKR_VS_STARTUP_PROJECT DIRECTORY ${PROJECT_SOURCE_DIR} DEFINITION VS_STARTUP_PROJECT)
+if(NOT CMKR_VS_STARTUP_PROJECT)
+	set_property(DIRECTORY ${PROJECT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT repl)
+endif()
 
 enable_testing()
 
@@ -302,7 +278,7 @@ add_test(
 	COMMAND
 		"$<TARGET_FILE:repl>"
 		--test
-		"${CMAKE_CURRENT_SOURCE_DIR}/test/test.lua"
+		${CMAKE_CURRENT_SOURCE_DIR}/test/test.lua
 )
 
 if(NOT LUAGENNY_BUILD_STATIC) # shared
