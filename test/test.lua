@@ -149,7 +149,7 @@ function do_tests()
     table.insert(results, value_expect(#known_variables == #known_variables2, true, "#known_variables == #known_variables2"))
 
     table.insert(results, value_expect(known_variables ~= nil, true, "known_variables ~= nil"))
-    table.insert(results, value_expect(#known_variables, 10, "#known_variables"))
+    table.insert(results, value_expect(#known_variables, 12, "#known_variables"))
 
     for k, v in pairs(known_variables) do
         table.insert(results, value_expect(known_variables[k] == known_variables2[k], true, "known_variables[" .. tostring(k) .. "] == known_variables2[" .. tostring(k) .. "]"))

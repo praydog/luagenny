@@ -190,9 +190,9 @@ struct Baz : Bar 0x100 {
     Foo g
     Thing* things
     char* hello [[utf8*]]
-    //wchar_t* wide_hello [[utf16*]]
-    //char[32] intrusive_hello [[utf8*]]
-    bool im_true +40
+    wchar_t* wide_hello [[utf16*]]
+    char[32] intrusive_hello [[utf8*]]
+    bool im_true
     bool im_false
     bool im_also_true
 	//RTTITest* test + 5
