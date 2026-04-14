@@ -369,6 +369,22 @@ struct ParseTestStruct {
     local nYear = date_struct:find_variable("nYear")
     table.insert(results, value_expect(nYear:bit_size(), 8, "nYear:bit_size() == 8"))
 
+    -- Non-template bitfield bit_offset tests (Date: nWeekDay:3, nMonthDay:6, nMonth:5, nYear:8)
+    table.insert(results, value_expect(nWeekDay:bit_offset(), 0, "nWeekDay:bit_offset() == 0"))
+    table.insert(results, value_expect(nMonthDay:bit_offset(), 3, "nMonthDay:bit_offset() == 3"))
+    table.insert(results, value_expect(nMonth:bit_offset(), 9, "nMonth:bit_offset() == 9"))
+    -- nYear spans past 16 bits so it starts in the next storage unit
+    table.insert(results, value_expect(nYear:offset(), 2, "nYear:offset() == 2 (next ushort)"))
+    table.insert(results, value_expect(nYear:bit_offset(), 0, "nYear:bit_offset() == 0 (new storage unit)"))
+
+    -- Non-template bitfield: field after bitfields has correct byte offset
+    -- Foo has: int a(0), int b(4), float c(8), Place p(12), Place bf1:4(16), Place bf2:2(16)
+    -- Foo total = 0x14 (20 bytes). Bar has: int d(0), Foo* foo(4), int[4][3] m, Date date
+    local foo_struct = ns:find_struct("Foo")
+    table.insert(results, value_expect(foo_struct:find_variable("bf1"):bit_offset(), 0, "Foo.bf1:bit_offset() == 0"))
+    table.insert(results, value_expect(foo_struct:find_variable("bf2"):bit_offset(), 4, "Foo.bf2:bit_offset() == 4"))
+    table.insert(results, value_expect(foo_struct:find_variable("bf1"):offset(), foo_struct:find_variable("bf2"):offset(), "Foo.bf1 and bf2 share storage unit"))
+
     -- Variable offset setter
     local tv = fresh_ns:find_struct("ParseTestStruct"):find_variable("x")
     tv:offset(16)
