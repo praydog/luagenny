@@ -100,6 +100,11 @@ static_assert(sizeof(VirtInt) >= 0xC, "TemplateVirtual size includes vtable + da
 static_assert(offsetof(VirtualBase, data) == 0x8, "VirtualBase.data @ 0x8");
 static_assert(sizeof(VirtualBase) >= 0xC, "VirtualBase size includes vtable + data");
 
+// TemplatePtrUser: uses template instantiations through pointers (soft deps)
+static_assert(offsetof(TemplatePtrUser, box_ptr) == 0, "TemplatePtrUser.box_ptr offset");
+static_assert(offsetof(TemplatePtrUser, pair_ptr) == sizeof(void*), "TemplatePtrUser.pair_ptr offset");
+static_assert(offsetof(TemplatePtrUser, value) == 2 * sizeof(void*), "TemplatePtrUser.value offset");
+
 int main() {
     int failures = 0;
 
