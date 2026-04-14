@@ -723,6 +723,17 @@ struct ParseTestStruct {
 
     -- Overlay reads on array template
     table.insert(results, value_expect(baz.tpl_arr.count, 4, "tpl_arr.count read"))
+    -- Array element access through template: T[4] items
+    for i = 0, 3 do
+        table.insert(results, value_expect(baz.tpl_arr.items[i], (i + 1) * 10, "tpl_arr.items[" .. i .. "] via ArrayOverlay"))
+    end
+
+    -- Also test the pre-existing int[4][3] m field on Bar (never tested before!)
+    for i = 0, 3 do
+        for j = 0, 2 do
+            table.insert(results, value_expect(baz.m[i][j], i + j, "baz.m[" .. i .. "][" .. j .. "] multi-dim array"))
+        end
+    end
 
     -- Same template, different instantiations (dedup via TemplateUser)
     local box_int_t = ns:find_struct("TemplateBox<int>")
