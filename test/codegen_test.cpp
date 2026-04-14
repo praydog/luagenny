@@ -25,6 +25,7 @@ using ushort = uint16_t;
 #include "TemplateVirtual.hpp"
 #include "TemplateUser.hpp"
 #include "VirtualBase.hpp"
+#include "TemplatePtrUser.hpp"
 
 
 // Use typedefs to avoid comma-in-macro issues with offsetof

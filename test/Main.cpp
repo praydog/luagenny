@@ -257,6 +257,13 @@ struct TemplateMixed {
     int footer
 }
 
+// Test: template with explicit size + T by value (trailing padding test)
+template <typename T>
+struct TemplateSized 0x20 {
+    int header
+    T value
+}
+
 template <typename T>
 struct TemplateArray {
     T[4] items
@@ -328,6 +335,13 @@ struct TemplateUser {
     TemplateBox<int> box_int
     TemplatePair<float, int> pair_swapped
     TemplateList<Foo> entity_list
+}
+
+// Test: instantiated template as pointer (soft dep / forward decl test)
+struct TemplatePtrUser {
+    TemplateBox<Foo>* box_ptr
+    TemplatePair<int, float>* pair_ptr
+    int value
 }
 
 struct Baz : Bar 0x100 {
