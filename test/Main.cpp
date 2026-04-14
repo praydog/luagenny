@@ -128,6 +128,13 @@ struct TemplateArray {
     int count{};
 };
 
+template<typename T>
+struct TemplateList {
+    T** data{};
+    int capacity{};
+    int size{};
+};
+
 struct Baz : Bar {
     TA ta{};
     int e{};
@@ -145,6 +152,7 @@ struct Baz : Bar {
     TemplatePair<int, float> tpl_pair{};
     TemplateMixed<float> tpl_mixed{};
     TemplateArray<int> tpl_arr{};
+    TemplateList<Thing> tpl_list{};
     __declspec(align(sizeof(void*))) RTTITest* rtti{};
     E* e_ptr{};
 };
@@ -237,6 +245,13 @@ struct TemplateArray {
     int count
 }
 
+template <typename T>
+struct TemplateList {
+    T** data
+    int capacity
+    int size
+}
+
 struct TemplateUser {
     TemplateBox<Foo> box
     TemplatePair<int, float> pair
@@ -244,6 +259,7 @@ struct TemplateUser {
     TemplateArray<int> arr
     TemplateBox<int> box_int
     TemplatePair<float, int> pair_swapped
+    TemplateList<Foo> entity_list
 }
 
 struct Baz : Bar 0x100 {
@@ -263,6 +279,7 @@ struct Baz : Bar 0x100 {
     TemplatePair<int, float> tpl_pair
     TemplateMixed<float> tpl_mixed
     TemplateArray<int> tpl_arr
+    TemplateList<Thing> tpl_list
 	//RTTITest* test + 5
 }
 
@@ -370,6 +387,16 @@ int main(int argc, char* argv[]) {
     baz->tpl_mixed.footer = 0xBB;
     for (int i = 0; i < 4; ++i) baz->tpl_arr.items[i] = (i + 1) * 10;
     baz->tpl_arr.count = 4;
+    // Populate TemplateList<Thing> with Thing* entries
+    static Thing* thing_ptrs[5];
+    static Thing thing_instances[5];
+    for (int i = 0; i < 5; ++i) {
+        thing_instances[i].abc = (i + 1) * 100;
+        thing_ptrs[i] = &thing_instances[i];
+    }
+    baz->tpl_list.data = thing_ptrs;
+    baz->tpl_list.capacity = 5;
+    baz->tpl_list.size = 5;
 
     lua["bazaddr"] = (uintptr_t)baz;
 

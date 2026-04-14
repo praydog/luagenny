@@ -149,7 +149,7 @@ function do_tests()
     table.insert(results, value_expect(#known_variables == #known_variables2, true, "#known_variables == #known_variables2"))
 
     table.insert(results, value_expect(known_variables ~= nil, true, "known_variables ~= nil"))
-    table.insert(results, value_expect(#known_variables, 16, "#known_variables"))
+    table.insert(results, value_expect(#known_variables, 17, "#known_variables"))
 
     for k, v in pairs(known_variables) do
         table.insert(results, value_expect(known_variables[k] == known_variables2[k], true, "known_variables[" .. tostring(k) .. "] == known_variables2[" .. tostring(k) .. "]"))
@@ -781,6 +781,35 @@ struct ParseTestStruct {
     -- Template struct with @ offset: instantiated struct preserves pinned offsets
     table.insert(results, value_expect(box_foo_t:find_variable("data"):offset(), 0x8, "instantiated preserves @ 0x8 offset"))
     table.insert(results, value_expect(box_int_t:find_variable("data"):offset(), 0x8, "second instantiation preserves @ 0x8 offset"))
+
+    -- T** parsed template (real-world container pattern: T** data, uint32 cap, uint32 size)
+    local list_foo_t = ns:find_struct("TemplateList<Foo>")
+    table.insert(results, value_expect(list_foo_t ~= nil, true, "find TemplateList<Foo>"))
+    local list_data = list_foo_t:find_variable("data")
+    table.insert(results, value_expect(list_data ~= nil, true, "TemplateList has data field"))
+    table.insert(results, value_expect(list_data:type():is_pointer(), true, "T** data outer is pointer"))
+    table.insert(results, value_expect(list_data:type():as_pointer():to():is_pointer(), true, "T** data inner is pointer"))
+    table.insert(results, value_expect(list_data:type():as_pointer():to():as_pointer():to():name(), "Foo", "T** -> Foo**"))
+    table.insert(results, value_expect(list_foo_t:find_variable("capacity"):type():name(), "int", "list capacity is int"))
+    table.insert(results, value_expect(list_foo_t:find_variable("size"):type():name(), "int", "list size is int"))
+
+    -- Overlay iteration through T** template (the real-world entity list pattern)
+    -- baz.tpl_list is a TemplateList<Thing> with 5 Thing* entries
+    table.insert(results, value_expect(baz.tpl_list.size, 5, "tpl_list.size"))
+    table.insert(results, value_expect(baz.tpl_list.capacity, 5, "tpl_list.capacity"))
+    -- Iterate: tpl_list.data[i]:deref().abc == (i+1)*100
+    for i = 0, baz.tpl_list.size - 1 do
+        local entry = baz.tpl_list.data[i]:deref()
+        table.insert(results, value_expect(entry ~= nil, true, "tpl_list.data[" .. i .. "] not nil"))
+        table.insert(results, value_expect(entry.abc, (i + 1) * 100, "tpl_list.data[" .. i .. "].abc"))
+    end
+
+    -- Write through the template list and read back
+    local old_abc = baz.tpl_list.data[0]:deref().abc
+    baz.tpl_list.data[0]:deref().abc = 9999
+    table.insert(results, value_expect(baz.tpl_list.data[0]:deref().abc, 9999, "tpl_list write through T**"))
+    baz.tpl_list.data[0]:deref().abc = old_abc
+    table.insert(results, value_expect(baz.tpl_list.data[0]:deref().abc, old_abc, "tpl_list write restored"))
 
     local total_passed = 0
 

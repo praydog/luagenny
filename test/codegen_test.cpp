@@ -12,6 +12,7 @@
 #include "TemplatePair.hpp"
 #include "TemplateMixed.hpp"
 #include "TemplateArray.hpp"
+#include "TemplateList.hpp"
 #include "Foo.hpp"
 #include "TemplateUser.hpp"
 
@@ -24,6 +25,7 @@ using PairFloatInt = TemplatePair<float, int>;
 using MixedFloat = TemplateMixed<float>;
 using MixedInt = TemplateMixed<int>;
 using ArrInt = TemplateArray<int>;
+using ListFoo = TemplateList<Foo>;
 
 // Size assertions for template instantiations
 static_assert(sizeof(BoxInt) == 8 + sizeof(void*), "TemplateBox<int> size");
@@ -54,6 +56,12 @@ static_assert(offsetof(MixedFloat, footer) == 8 + sizeof(void*), "TemplateMixed.
 // Offset assertions for TemplateArray
 static_assert(offsetof(ArrInt, items) == 0, "TemplateArray.items offset");
 static_assert(offsetof(ArrInt, count) == 16, "TemplateArray.count offset");
+
+// Offset assertions for TemplateList (T** container pattern)
+static_assert(offsetof(ListFoo, data) == 0, "TemplateList.data offset");
+static_assert(offsetof(ListFoo, capacity) == sizeof(void*), "TemplateList.capacity offset");
+static_assert(offsetof(ListFoo, size) == sizeof(void*) + 4, "TemplateList.size offset");
+static_assert(sizeof(ListFoo) == sizeof(void*) + 8, "TemplateList<Foo> size");
 
 
 int main() {
