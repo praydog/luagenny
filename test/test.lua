@@ -149,7 +149,7 @@ function do_tests()
     table.insert(results, value_expect(#known_variables == #known_variables2, true, "#known_variables == #known_variables2"))
 
     table.insert(results, value_expect(known_variables ~= nil, true, "known_variables ~= nil"))
-    table.insert(results, value_expect(#known_variables, 12, "#known_variables"))
+    table.insert(results, value_expect(#known_variables, 16, "#known_variables"))
 
     for k, v in pairs(known_variables) do
         table.insert(results, value_expect(known_variables[k] == known_variables2[k], true, "known_variables[" .. tostring(k) .. "] == known_variables2[" .. tostring(k) .. "]"))
@@ -611,6 +611,174 @@ struct ParseTestStruct {
     test_ec:value("Y", 20)
     local ec_vals = test_ec:values()
     table.insert(results, value_expect(#ec_vals, 2, "EnumClass:values() works"))
+
+    ----------------------------
+    --- Template type tests ----
+    ----------------------------
+    -- Test template struct definition via parsing
+    local template_box_t = ns:find_struct("TemplateBox")
+    table.insert(results, value_expect(template_box_t ~= nil, true, "find template struct TemplateBox"))
+    table.insert(results, value_expect(template_box_t:is_template(), true, "TemplateBox:is_template()"))
+    table.insert(results, value_expect(#template_box_t:template_parameters(), 1, "TemplateBox has 1 template param"))
+    table.insert(results, value_expect(template_box_t:template_parameters()[1]:name(), "T", "template param name is T"))
+
+    -- Test multi-param template
+    local template_pair_t = ns:find_struct("TemplatePair")
+    table.insert(results, value_expect(template_pair_t ~= nil, true, "find template struct TemplatePair"))
+    table.insert(results, value_expect(template_pair_t:is_template(), true, "TemplatePair:is_template()"))
+    table.insert(results, value_expect(#template_pair_t:template_parameters(), 2, "TemplatePair has 2 template params"))
+    table.insert(results, value_expect(template_pair_t:template_parameters()[1]:name(), "K", "first param is K"))
+    table.insert(results, value_expect(template_pair_t:template_parameters()[2]:name(), "V", "second param is V"))
+
+    -- Test template instantiation via parsing
+    local box_foo_t = ns:find_struct("TemplateBox<Foo>")
+    table.insert(results, value_expect(box_foo_t ~= nil, true, "find instantiated TemplateBox<Foo>"))
+    table.insert(results, value_expect(box_foo_t:is_template(), false, "instantiated struct is NOT a template"))
+    table.insert(results, value_expect(box_foo_t:find_variable("data") ~= nil, true, "instantiated struct has data field"))
+    table.insert(results, value_expect(box_foo_t:find_variable("data"):type():is_pointer(), true, "data field is a pointer"))
+    table.insert(results, value_expect(box_foo_t:find_variable("data"):type():as_pointer():to():name(), "Foo", "data points to Foo"))
+
+    -- Test multi-param instantiation
+    local pair_int_float_t = ns:find_struct("TemplatePair<int, float>")
+    table.insert(results, value_expect(pair_int_float_t ~= nil, true, "find instantiated TemplatePair<int, float>"))
+    table.insert(results, value_expect(pair_int_float_t:find_variable("key"):type():name(), "int", "pair.key type is int"))
+    table.insert(results, value_expect(pair_int_float_t:find_variable("value"):type():name(), "float", "pair.value type is float"))
+
+    -- Test programmatic template API
+    local prog_tpl = fresh_ns:struct("ProgTemplate")
+    local prog_T = prog_tpl:template_parameter("T")
+    table.insert(results, value_expect(prog_T ~= nil, true, "template_parameter() creates param"))
+    table.insert(results, value_expect(prog_T:name(), "T", "template param name"))
+    table.insert(results, value_expect(prog_tpl:is_template(), true, "struct with params is_template()"))
+    local prog_var = prog_tpl:variable("field")
+    prog_var:type(prog_T):offset(0)
+
+    -- Instantiate programmatically
+    local build_int = fresh_ns:find_type("int")
+    local prog_inst = prog_tpl:instantiate({build_int})
+    table.insert(results, value_expect(prog_inst ~= nil, true, "instantiate() returns struct"))
+    table.insert(results, value_expect(prog_inst:name(), "ProgTemplate<int>", "instantiated name"))
+    table.insert(results, value_expect(prog_inst:find_variable("field"):type():name(), "int", "instantiated field type is int"))
+    table.insert(results, value_expect(prog_inst:is_template(), false, "instantiated struct is NOT a template"))
+
+
+    ----------------------------
+    -- Template overlay r/w tests
+    ----------------------------
+    -- Read through template-typed field: baz.tpl_box is a TemplateBox<Foo>
+    table.insert(results, value_expect(baz.tpl_box ~= nil, true, "baz.tpl_box overlay exists"))
+    table.insert(results, value_expect(baz.tpl_box.data.a, 42, "baz.tpl_box.data.a (Foo* through template)"))
+    table.insert(results, value_expect(baz.tpl_box.data.b, 1337, "baz.tpl_box.data.b (Foo* through template)"))
+    table.insert(results, value_expect(round(baz.tpl_box.data.c, 1), 77.7, "baz.tpl_box.data.c (float through template)"))
+
+    -- Read TemplatePair<int, float> fields
+    table.insert(results, value_expect(baz.tpl_pair.key, 99, "baz.tpl_pair.key (int through template)"))
+    table.insert(results, value_expect(round(baz.tpl_pair.value, 3), 2.718, "baz.tpl_pair.value (float through template)"))
+
+    -- Write through template overlay and read back
+    local old_key = baz.tpl_pair.key
+    baz.tpl_pair.key = 777
+    table.insert(results, value_expect(baz.tpl_pair.key, 777, "tpl_pair.key write/read"))
+    baz.tpl_pair.key = old_key
+    table.insert(results, value_expect(baz.tpl_pair.key, old_key, "tpl_pair.key restored"))
+
+    local old_val = baz.tpl_pair.value
+    baz.tpl_pair.value = 1.414
+    table.insert(results, value_expect(round(baz.tpl_pair.value, 3), 1.414, "tpl_pair.value write/read"))
+    baz.tpl_pair.value = old_val
+    table.insert(results, value_expect(round(baz.tpl_pair.value, 3), round(old_val, 3), "tpl_pair.value restored"))
+
+    ----------------------------
+    -- Template edge-case tests -
+    ----------------------------
+
+    -- Mixed template: non-template fields + template fields in same struct
+    local mixed_float_t = ns:find_struct("TemplateMixed<float>")
+    table.insert(results, value_expect(mixed_float_t ~= nil, true, "find TemplateMixed<float>"))
+    table.insert(results, value_expect(mixed_float_t:find_variable("header"):type():name(), "int", "mixed: non-template field type preserved"))
+    table.insert(results, value_expect(mixed_float_t:find_variable("value"):type():name(), "float", "mixed: T substituted to float"))
+    table.insert(results, value_expect(mixed_float_t:find_variable("ptr"):type():is_pointer(), true, "mixed: T* is pointer"))
+    table.insert(results, value_expect(mixed_float_t:find_variable("ptr"):type():as_pointer():to():name(), "float", "mixed: T* points to float"))
+    table.insert(results, value_expect(mixed_float_t:find_variable("footer"):type():name(), "int", "mixed: trailing non-template field preserved"))
+
+    -- Overlay reads on mixed template
+    table.insert(results, value_expect(baz.tpl_mixed.header, 0xAA, "tpl_mixed.header read"))
+    table.insert(results, value_expect(round(baz.tpl_mixed.value, 2), 6.28, "tpl_mixed.value read (T=float)"))
+    table.insert(results, value_expect(baz.tpl_mixed.footer, 0xBB, "tpl_mixed.footer read"))
+
+    -- Write + restore on mixed template
+    local old_mixed_hdr = baz.tpl_mixed.header
+    baz.tpl_mixed.header = 0xCC
+    table.insert(results, value_expect(baz.tpl_mixed.header, 0xCC, "tpl_mixed.header write"))
+    baz.tpl_mixed.header = old_mixed_hdr
+    table.insert(results, value_expect(baz.tpl_mixed.header, old_mixed_hdr, "tpl_mixed.header restored"))
+
+    -- Array template: T[4] items
+    local arr_int_t = ns:find_struct("TemplateArray<int>")
+    table.insert(results, value_expect(arr_int_t ~= nil, true, "find TemplateArray<int>"))
+    table.insert(results, value_expect(arr_int_t:find_variable("count"):type():name(), "int", "array tpl: non-template field preserved"))
+    -- items field type should be an array of int
+    local items_type = arr_int_t:find_variable("items"):type()
+    table.insert(results, value_expect(items_type:is_array(), true, "array tpl: T[4] is array type"))
+
+    -- Overlay reads on array template
+    table.insert(results, value_expect(baz.tpl_arr.count, 4, "tpl_arr.count read"))
+
+    -- Same template, different instantiations (dedup via TemplateUser)
+    local box_int_t = ns:find_struct("TemplateBox<int>")
+    table.insert(results, value_expect(box_int_t ~= nil, true, "find TemplateBox<int> (second instantiation)"))
+    table.insert(results, value_expect(box_int_t:find_variable("data"):type():as_pointer():to():name(), "int", "TemplateBox<int>.data -> int*"))
+    -- Verify TemplateBox<Foo> and TemplateBox<int> are different structs
+    table.insert(results, value_expect(box_foo_t ~= box_int_t, true, "different instantiations are different structs"))
+    -- But both came from the same template
+    table.insert(results, value_expect(box_foo_t:size(), box_int_t:size(), "same-shape instantiations have same size"))
+
+    -- Swapped params: TemplatePair<float, int> vs TemplatePair<int, float>
+    local pair_swapped_t = ns:find_struct("TemplatePair<float, int>")
+    table.insert(results, value_expect(pair_swapped_t ~= nil, true, "find TemplatePair<float, int>"))
+    table.insert(results, value_expect(pair_swapped_t:find_variable("key"):type():name(), "float", "swapped pair.key is float"))
+    table.insert(results, value_expect(pair_swapped_t:find_variable("value"):type():name(), "int", "swapped pair.value is int"))
+    -- Original and swapped are different structs
+    table.insert(results, value_expect(pair_int_float_t ~= pair_swapped_t, true, "swapped params produce different struct"))
+
+    -- Idempotent instantiation: calling instantiate again returns the same struct
+    local box_foo_t2 = template_box_t:instantiate({ns:find_struct("Foo")})
+    table.insert(results, value_expect(box_foo_t2:name(), "TemplateBox<Foo>", "re-instantiate returns same name"))
+
+    -- Programmatic: T used as both value and pointer in same template
+    local dual_tpl = fresh_ns:struct("DualUse")
+    local dual_T = dual_tpl:template_parameter("T")
+    dual_tpl:variable("by_val"):type(dual_T):offset(0)
+    dual_tpl:variable("by_ptr"):type(dual_T:ptr()):offset(8)
+
+    local dual_inst = dual_tpl:instantiate({fresh_ns:find_type("int")})
+    table.insert(results, value_expect(dual_inst ~= nil, true, "dual-use template instantiated"))
+    table.insert(results, value_expect(dual_inst:find_variable("by_val"):type():name(), "int", "dual: T by value -> int"))
+    table.insert(results, value_expect(dual_inst:find_variable("by_ptr"):type():is_pointer(), true, "dual: T* is pointer"))
+    table.insert(results, value_expect(dual_inst:find_variable("by_ptr"):type():as_pointer():to():name(), "int", "dual: T* -> int*"))
+
+    -- Programmatic: instantiate with wrong arg count returns nil
+    local bad_inst = template_box_t:instantiate({ns:find_type("int"), ns:find_type("float")})
+    table.insert(results, value_expect(bad_inst == nil, true, "instantiate with wrong arg count returns nil"))
+
+    -- Programmatic: double pointer T**
+    local dblptr_tpl = fresh_ns:struct("DblPtr")
+    local dblptr_T = dblptr_tpl:template_parameter("T")
+    dblptr_tpl:variable("pp"):type(dblptr_T:ptr():ptr()):offset(0)
+    local dblptr_inst = dblptr_tpl:instantiate({fresh_ns:find_type("int")})
+    table.insert(results, value_expect(dblptr_inst ~= nil, true, "T** template instantiated"))
+    local pp_type = dblptr_inst:find_variable("pp"):type()
+    table.insert(results, value_expect(pp_type:is_pointer(), true, "T** outer is pointer"))
+    table.insert(results, value_expect(pp_type:as_pointer():to():is_pointer(), true, "T** inner is pointer"))
+    table.insert(results, value_expect(pp_type:as_pointer():to():as_pointer():to():name(), "int", "T** -> int**"))
+
+    -- Template struct with explicit size: instantiated struct preserves it
+    table.insert(results, value_expect(box_foo_t:size(), 0x10, "instantiated TemplateBox<Foo> preserves 0x10 size"))
+    table.insert(results, value_expect(box_int_t:size(), 0x10, "instantiated TemplateBox<int> preserves 0x10 size"))
+
+    -- Template struct with @ offset: instantiated struct preserves pinned offsets
+    table.insert(results, value_expect(box_foo_t:find_variable("data"):offset(), 0x8, "instantiated preserves @ 0x8 offset"))
+    table.insert(results, value_expect(box_int_t:find_variable("data"):offset(), 0x8, "second instantiation preserves @ 0x8 offset"))
 
     local total_passed = 0
 

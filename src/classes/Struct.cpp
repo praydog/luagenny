@@ -9,6 +9,7 @@ extern "C" {
 #include "sdkgenny.hpp"
 #include "ClassMacros.hpp"
 #include "Struct.hpp"
+#include <sdkgenny/template_parameter.hpp>
 
 namespace luagenny {
 template<size_t N>
@@ -54,6 +55,16 @@ void create_bindings(sol::table sdkgenny) {
         "function", &sdkgenny::Struct::function,
         "virtual_function", &sdkgenny::Struct::virtual_function,
         "static_function", &sdkgenny::Struct::static_function,
+        "template_parameter", &sdkgenny::Struct::template_parameter,
+        "template_parameters", &sdkgenny::Struct::template_parameters,
+        "is_template", &sdkgenny::Struct::is_template,
+        "instantiate", [](sdkgenny::Struct& s, sol::table args_table) -> sdkgenny::Struct* {
+            std::vector<sdkgenny::Type*> args;
+            for (size_t i = 1; i <= args_table.size(); ++i) {
+                args.push_back(args_table[i].get<sdkgenny::Type*>());
+            }
+            return s.instantiate(args);
+        },
         "bitfield", [] (sdkgenny::Struct& st, int offset, sol::this_state s) -> sol::table {
             auto bitfield_vars = st.bitfield(offset);
             sol::table result = sol::state_view(s).create_table();
@@ -104,7 +115,8 @@ int open_struct(lua_State* l) {
         STypeDescriptor<sdkgenny::StaticFunction, "static_function">,
         STypeDescriptor<sdkgenny::Array, "array">,
         STypeDescriptor<sdkgenny::Parameter, "parameter">,
-        STypeDescriptor<sdkgenny::Constant, "constant">>(sdkgenny);
+        STypeDescriptor<sdkgenny::Constant, "constant">,
+        STypeDescriptor<sdkgenny::TemplateParameter, "template_parameter">>(sdkgenny);
 
     return 0;
 }

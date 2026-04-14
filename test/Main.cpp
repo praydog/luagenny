@@ -102,6 +102,32 @@ struct TA : Student, Faculty {
     int hours{40};
 };
 
+template<typename T>
+struct TemplateBox {
+    char pad[8]{};
+    T* data{};
+};
+
+template<typename K, typename V>
+struct TemplatePair {
+    K key{};
+    V value{};
+};
+
+template<typename T>
+struct TemplateMixed {
+    int header{};
+    T value{};
+    T* ptr{};
+    int footer{};
+};
+
+template<typename T>
+struct TemplateArray {
+    T items[4]{};
+    int count{};
+};
+
 struct Baz : Bar {
     TA ta{};
     int e{};
@@ -115,6 +141,10 @@ struct Baz : Bar {
     bool im_true{true};
     bool im_false{false};
     char im_also_true{7};
+    TemplateBox<Foo> tpl_box{};
+    TemplatePair<int, float> tpl_pair{};
+    TemplateMixed<float> tpl_mixed{};
+    TemplateArray<int> tpl_arr{};
     __declspec(align(sizeof(void*))) RTTITest* rtti{};
     E* e_ptr{};
 };
@@ -182,6 +212,40 @@ struct TA : Student, Faculty {
     int hours
 }
 
+template <typename T>
+struct TemplateBox 0x10 {
+    T* data @ 0x8
+}
+
+template <typename K, typename V>
+struct TemplatePair {
+    K key
+    V value
+}
+
+template <typename T>
+struct TemplateMixed {
+    int header
+    T value
+    T* ptr
+    int footer
+}
+
+template <typename T>
+struct TemplateArray {
+    T[4] items
+    int count
+}
+
+struct TemplateUser {
+    TemplateBox<Foo> box
+    TemplatePair<int, float> pair
+    TemplateMixed<float> mixed
+    TemplateArray<int> arr
+    TemplateBox<int> box_int
+    TemplatePair<float, int> pair_swapped
+}
+
 struct Baz : Bar 0x100 {
 	TA ta
     int e
@@ -195,6 +259,10 @@ struct Baz : Bar 0x100 {
     bool im_true
     bool im_false
     bool im_also_true
+    TemplateBox<Foo> tpl_box
+    TemplatePair<int, float> tpl_pair
+    TemplateMixed<float> tpl_mixed
+    TemplateArray<int> tpl_arr
 	//RTTITest* test + 5
 }
 
@@ -229,7 +297,13 @@ int main(int argc, char* argv[]) {
 
     if (argc >= 2) {
         performing_tests = std::string{argv[1]} == "--test";
-        script_path = argv[2];
+        if (performing_tests) {
+            if (argc < 3) {
+                std::cerr << "Usage: " << argv[0] << " --test <script.lua>" << std::endl;
+                return 1;
+            }
+            script_path = argv[2];
+        }
     }
 
     // Create a Lua state
@@ -287,6 +361,15 @@ int main(int argc, char* argv[]) {
     auto rtti = new RTTITest{};
     baz->rtti = rtti;
     baz->e_ptr = new E{};
+    baz->tpl_box.data = foo;
+    baz->tpl_pair.key = 99;
+    baz->tpl_pair.value = 2.718f;
+    baz->tpl_mixed.header = 0xAA;
+    baz->tpl_mixed.value = 6.28f;
+    baz->tpl_mixed.ptr = &baz->tpl_mixed.value;
+    baz->tpl_mixed.footer = 0xBB;
+    for (int i = 0; i < 4; ++i) baz->tpl_arr.items[i] = (i + 1) * 10;
+    baz->tpl_arr.count = 4;
 
     lua["bazaddr"] = (uintptr_t)baz;
 

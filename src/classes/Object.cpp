@@ -12,6 +12,7 @@ extern "C" {
 #include "sdkgenny.hpp"
 #include "ClassMacros.hpp"
 #include "Object.hpp"
+#include <sdkgenny/template_parameter.hpp>
 
 namespace luagenny {
 template<size_t N>
@@ -317,7 +318,8 @@ int open_object(lua_State* l) {
         TypeDescriptor<sdkgenny::StaticFunction, "static_function">,
         TypeDescriptor<sdkgenny::Array, "array">,
         TypeDescriptor<sdkgenny::Parameter, "parameter">,
-        TypeDescriptor<sdkgenny::Constant, "constant">>(sdkgenny);
+        TypeDescriptor<sdkgenny::Constant, "constant">,
+        TypeDescriptor<sdkgenny::TemplateParameter, "template_parameter">>(sdkgenny);
 
     return 0;
 }

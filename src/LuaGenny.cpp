@@ -27,6 +27,7 @@ extern "C" {
 
 #include <sdkgenny.hpp>
 #include <sdkgenny_parser.hpp>
+#include <sdkgenny/template_parameter.hpp>
 
 #include "classes/ClassMacros.hpp"
 #include "classes/Sdk.hpp"
@@ -505,6 +506,10 @@ int open(lua_State* l) {
     luagenny::open_type(l);
 
     sdkgenny.new_usertype<sdkgenny::GenericType>("GenericType",
+        sol::base_classes, sol::bases<GENNY_TYPE_BASES>()
+    );
+
+    sdkgenny.new_usertype<sdkgenny::TemplateParameter>("TemplateParameter",
         sol::base_classes, sol::bases<GENNY_TYPE_BASES>()
     );
 
