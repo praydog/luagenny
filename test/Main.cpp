@@ -183,6 +183,12 @@ struct DeltaTest {
     int second + 4
 }
 
+struct VirtualBase {
+    virtual void first_virtual() @ 0
+    virtual int second_virtual() @ 1
+    int data @ 0x8
+}
+
 enum Place {
     EARTH = 1,
     MOON = 2,
@@ -297,6 +303,21 @@ class TemplateClassBox {
 template <typename T>
 struct TemplateChild : Foo {
     T extra
+}
+
+// Test: template with parent + explicit size + multiple fields
+template <typename T>
+struct TemplateChildComplex : Bar {
+    T value
+    T* ptr
+    int footer
+}
+
+// Test: template with virtual function (vtable pointer)
+template <typename T>
+struct TemplateVirtual {
+    virtual void dummy() @ 0
+    T data @ 0x8
 }
 
 struct TemplateUser {

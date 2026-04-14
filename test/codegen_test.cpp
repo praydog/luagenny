@@ -6,6 +6,10 @@
 
 #include <cstddef>
 #include <iostream>
+#include <cstdint>
+
+// The genny schema uses "ushort" which isn't standard C++
+using ushort = uint16_t;
 
 // Include generated headers
 #include "TemplateBox.hpp"
@@ -15,7 +19,12 @@
 #include "TemplateList.hpp"
 #include "TemplateBitfield.hpp"
 #include "Foo.hpp"
+#include "Bar.hpp"
+#include "TemplateChild.hpp"
+#include "TemplateChildComplex.hpp"
+#include "TemplateVirtual.hpp"
 #include "TemplateUser.hpp"
+#include "VirtualBase.hpp"
 
 
 // Use typedefs to avoid comma-in-macro issues with offsetof
@@ -28,6 +37,9 @@ using MixedInt = TemplateMixed<int>;
 using ArrInt = TemplateArray<int>;
 using ListFoo = TemplateList<Foo>;
 using BfInt = TemplateBitfield<int>;
+using ChildInt = TemplateChild<int>;
+using ChildCplxInt = TemplateChildComplex<int>;
+using VirtInt = TemplateVirtual<int>;
 
 // Size assertions for template instantiations
 static_assert(sizeof(BoxInt) == 8 + sizeof(void*), "TemplateBox<int> size");
@@ -69,6 +81,23 @@ static_assert(sizeof(ListFoo) == sizeof(void*) + 8, "TemplateList<Foo> size");
 static_assert(sizeof(BfInt) == 12, "TemplateBitfield<int> size: int(4) + bitfield unit(4) + int(4)");
 static_assert(offsetof(BfInt, flags) == 0, "TemplateBitfield.flags offset");
 static_assert(offsetof(BfInt, after_bf) == 8, "TemplateBitfield.after_bf offset");
+
+// TemplateChild: inherits from Foo, T field should be after Foo's layout
+static_assert(sizeof(ChildInt) == sizeof(Foo) + sizeof(int), "TemplateChild<int> size");
+static_assert(offsetof(ChildInt, extra) == sizeof(Foo), "TemplateChild<int>.extra after Foo");
+
+// TemplateChildComplex: inherits from Bar, has T value + T* ptr + int footer
+static_assert(offsetof(ChildCplxInt, value) == sizeof(Bar), "ChildComplex.value after Bar");
+static_assert(offsetof(ChildCplxInt, ptr) == sizeof(Bar) + 4, "ChildComplex.ptr after value");
+static_assert(offsetof(ChildCplxInt, footer) == sizeof(Bar) + 4 + sizeof(void*), "ChildComplex.footer after ptr");
+
+// TemplateVirtual: has vtable pointer + T data @ 0x8
+static_assert(offsetof(VirtInt, data) == 0x8, "TemplateVirtual.data @ 0x8");
+static_assert(sizeof(VirtInt) >= 0xC, "TemplateVirtual size includes vtable + data");
+
+// Non-template VirtualBase: vtable pointer + data @ 0x8
+static_assert(offsetof(VirtualBase, data) == 0x8, "VirtualBase.data @ 0x8");
+static_assert(sizeof(VirtualBase) >= 0xC, "VirtualBase size includes vtable + data");
 
 int main() {
     int failures = 0;

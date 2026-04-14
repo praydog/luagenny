@@ -892,6 +892,29 @@ struct ParseTestStruct {
     local foo_size = ns:find_struct("Foo"):size()
     table.insert(results, value_expect(child_int:find_variable("extra"):offset(), foo_size, "template child: extra at parent end"))
 
+    -- Complex template with parent: TemplateChildComplex<T> : Bar { T value; T* ptr; int footer }
+    local cplx_t = ns:find_struct("TemplateChildComplex")
+    table.insert(results, value_expect(cplx_t ~= nil, true, "find TemplateChildComplex"))
+    local bar_size = ns:find_struct("Bar"):size()
+    local cplx_int = cplx_t:instantiate({ns:find_type("int")})
+    table.insert(results, value_expect(cplx_int ~= nil, true, "instantiate TemplateChildComplex<int>"))
+    -- value should start right after Bar
+    table.insert(results, value_expect(cplx_int:find_variable("value"):offset(), bar_size, "complex child: value at Bar end"))
+    -- ptr should be after value (int=4)
+    table.insert(results, value_expect(cplx_int:find_variable("ptr"):offset(), bar_size + 4, "complex child: ptr after value"))
+    -- footer should be after ptr (pointer size)
+    table.insert(results, value_expect(cplx_int:find_variable("footer"):offset(), bar_size + 4 + ptr_size, "complex child: footer after ptr"))
+
+    -- Template with virtual function: TemplateVirtual<T> { virtual void dummy() @ 0; T data @ 0x8 }
+    local virt_t = ns:find_struct("TemplateVirtual")
+    table.insert(results, value_expect(virt_t ~= nil, true, "find TemplateVirtual"))
+    local virt_int = virt_t:instantiate({ns:find_type("int")})
+    table.insert(results, value_expect(virt_int ~= nil, true, "instantiate TemplateVirtual<int>"))
+    -- data @ 0x8 should be preserved (explicit offset after vtable pointer)
+    table.insert(results, value_expect(virt_int:find_variable("data"):offset(), 0x8, "virtual template: data @ 0x8 preserved"))
+    -- size should account for vtable ptr + data
+    table.insert(results, value_expect(virt_int:size() >= 0xC, true, "virtual template: size includes vtable + data"))
+
     -- Comment 1: bitfields in template struct
     local bf_t = ns:find_struct("TemplateBitfield")
     table.insert(results, value_expect(bf_t ~= nil, true, "find TemplateBitfield"))
@@ -912,6 +935,20 @@ struct ParseTestStruct {
     -- Verify the offset: first(4) + pad(4) + second at offset 8
     local dt = ns:find_struct("DeltaTest")
     table.insert(results, value_expect(dt:find_variable("second"):offset(), 8, "DeltaTest.second offset = 4 + delta(4) = 8"))
+
+    -- Non-template virtual function struct
+    local vbase = ns:find_struct("VirtualBase")
+    table.insert(results, value_expect(vbase ~= nil, true, "find VirtualBase"))
+    table.insert(results, value_expect(vbase:has_any_virtual_function(), true, "VirtualBase has virtuals"))
+    -- data should be at offset 0x8 (after vtable pointer)
+    table.insert(results, value_expect(vbase:find_variable("data"):offset(), 0x8, "VirtualBase.data at 0x8 (after vtable)"))
+    -- vtable_index checks
+    local vfuncs = vbase:get_all_virtual_function()
+    table.insert(results, value_expect(#vfuncs, 2, "VirtualBase has 2 virtual functions"))
+    table.insert(results, value_expect(vfuncs[1]:vtable_index(), 0, "first_virtual vtable_index == 0"))
+    table.insert(results, value_expect(vfuncs[2]:vtable_index(), 1, "second_virtual vtable_index == 1"))
+    -- size should include vtable pointer + data
+    table.insert(results, value_expect(vbase:size() >= 0xC, true, "VirtualBase size includes vtable + data"))
 
     local total_passed = 0
 
