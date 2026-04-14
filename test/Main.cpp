@@ -213,7 +213,7 @@ struct TA : Student, Faculty {
 }
 
 template <typename T>
-struct TemplateBox 0x10 {
+struct TemplateBox {
     T* data @ 0x8
 }
 

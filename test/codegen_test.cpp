@@ -26,14 +26,14 @@ using MixedInt = TemplateMixed<int>;
 using ArrInt = TemplateArray<int>;
 
 // Size assertions for template instantiations
-static_assert(sizeof(BoxInt) == 0x10, "TemplateBox<int> size");
-static_assert(sizeof(BoxFoo) == 0x10, "TemplateBox<Foo> size");
+static_assert(sizeof(BoxInt) == 8 + sizeof(void*), "TemplateBox<int> size");
+static_assert(sizeof(BoxFoo) == 8 + sizeof(void*), "TemplateBox<Foo> size");
 
 static_assert(sizeof(PairIntFloat) == 8, "TemplatePair<int,float> size");
 static_assert(sizeof(PairFloatInt) == 8, "TemplatePair<float,int> size");
 
-static_assert(sizeof(MixedFloat) == 20, "TemplateMixed<float> size");
-static_assert(sizeof(MixedInt) == 20, "TemplateMixed<int> size");
+static_assert(sizeof(MixedFloat) == 12 + sizeof(void*), "TemplateMixed<float> size");
+static_assert(sizeof(MixedInt) == 12 + sizeof(void*), "TemplateMixed<int> size");
 
 static_assert(sizeof(ArrInt) == 20, "TemplateArray<int> size");
 
@@ -49,7 +49,7 @@ static_assert(offsetof(PairIntFloat, value) == 4, "TemplatePair.value offset");
 static_assert(offsetof(MixedFloat, header) == 0, "TemplateMixed.header offset");
 static_assert(offsetof(MixedFloat, value) == 4, "TemplateMixed.value offset");
 static_assert(offsetof(MixedFloat, ptr) == 8, "TemplateMixed.ptr offset");
-static_assert(offsetof(MixedFloat, footer) == 16, "TemplateMixed.footer offset");
+static_assert(offsetof(MixedFloat, footer) == 8 + sizeof(void*), "TemplateMixed.footer offset");
 
 // Offset assertions for TemplateArray
 static_assert(offsetof(ArrInt, items) == 0, "TemplateArray.items offset");

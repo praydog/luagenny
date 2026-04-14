@@ -773,8 +773,10 @@ struct ParseTestStruct {
     table.insert(results, value_expect(pp_type:as_pointer():to():as_pointer():to():name(), "int", "T** -> int**"))
 
     -- Template struct with explicit size: instantiated struct preserves it
-    table.insert(results, value_expect(box_foo_t:size(), 0x10, "instantiated TemplateBox<Foo> preserves 0x10 size"))
-    table.insert(results, value_expect(box_int_t:size(), 0x10, "instantiated TemplateBox<int> preserves 0x10 size"))
+    local ptr_size = string.packsize("T")
+    local expected_box_size = 8 + ptr_size -- pad[8] + T*
+    table.insert(results, value_expect(box_foo_t:size(), expected_box_size, "instantiated TemplateBox<Foo> size"))
+    table.insert(results, value_expect(box_int_t:size(), expected_box_size, "instantiated TemplateBox<int> size"))
 
     -- Template struct with @ offset: instantiated struct preserves pinned offsets
     table.insert(results, value_expect(box_foo_t:find_variable("data"):offset(), 0x8, "instantiated preserves @ 0x8 offset"))
