@@ -69,12 +69,12 @@ find_package(sol2)
 
 include(FetchContent)
 
-message(STATUS "Fetching sdkgenny (c957b569a06c1a9365e659c35635c79e2e505ad5)...")
+message(STATUS "Fetching sdkgenny (d21051f77b8e5cf4e324c2a1bb57521cb8321a0b)...")
 FetchContent_Declare(sdkgenny
 	GIT_REPOSITORY
 		"https://github.com/praydog/sdkgenny.git"
 	GIT_TAG
-		c957b569a06c1a9365e659c35635c79e2e505ad5
+		d21051f77b8e5cf4e324c2a1bb57521cb8321a0b
 )
 FetchContent_MakeAvailable(sdkgenny)
 
