@@ -831,6 +831,51 @@ struct ParseTestStruct {
     baz.tpl_list.data[0]:deref().abc = old_abc
     table.insert(results, value_expect(baz.tpl_list.data[0]:deref().abc, old_abc, "tpl_list write restored"))
 
+    ----------------------------
+    -- Copilot-reported edge cases
+    ----------------------------
+
+    -- Comment 2: + delta in template should NOT preserve offset during instantiation
+    -- TemplateDelta<T> has: int header; T value + 4
+    -- With T=int: header(4) + 4 padding + value(4) = offsets 0, 8
+    local delta_t = ns:find_struct("TemplateDelta")
+    table.insert(results, value_expect(delta_t ~= nil, true, "find TemplateDelta"))
+    table.insert(results, value_expect(delta_t:is_template(), true, "TemplateDelta:is_template()"))
+
+    -- Instantiate TemplateDelta<int> and check value's offset
+    local delta_int = delta_t:instantiate({ns:find_type("int")})
+    table.insert(results, value_expect(delta_int ~= nil, true, "instantiate TemplateDelta<int>"))
+    -- value should be at offset 8: header(4 bytes) + 4 bytes delta
+    table.insert(results, value_expect(delta_int:find_variable("value"):offset(), 8, "delta: value offset = header(4) + delta(4) = 8"))
+
+    -- Pathological case: + delta AFTER a template param field
+    -- TemplateDeltaAfterT<T> has: T header; int value + 4
+    -- In template: header(size 0) + delta 4 = value at offset 4
+    -- With T=float(4): header(4) + delta 4 = value should be at offset 8
+    local delta2_t = ns:find_struct("TemplateDeltaAfterT")
+    table.insert(results, value_expect(delta2_t ~= nil, true, "find TemplateDeltaAfterT"))
+    local delta2_float = delta2_t:instantiate({ns:find_type("float")})
+    table.insert(results, value_expect(delta2_float ~= nil, true, "instantiate TemplateDeltaAfterT<float>"))
+    -- value should be at 4 (float) + 4 (delta) = 8
+    table.insert(results, value_expect(delta2_float:find_variable("value"):offset(), 8, "delta-after-T: value at header_size + delta"))
+
+    -- Comment 3: template class should instantiate as Class, not Struct
+    local classbox_t = ns:find_struct("TemplateClassBox")
+    table.insert(results, value_expect(classbox_t ~= nil, true, "find TemplateClassBox"))
+    table.insert(results, value_expect(classbox_t:is_class(), true, "TemplateClassBox is_class()"))
+    local classbox_int = classbox_t:instantiate({ns:find_type("int")})
+    table.insert(results, value_expect(classbox_int ~= nil, true, "instantiate TemplateClassBox<int>"))
+    table.insert(results, value_expect(classbox_int:is_class(), true, "TemplateClassBox<int> is_class()"))
+
+    -- Comment 4: template struct with parent should account for parent size
+    local child_t = ns:find_struct("TemplateChild")
+    table.insert(results, value_expect(child_t ~= nil, true, "find TemplateChild"))
+    local child_int = child_t:instantiate({ns:find_type("int")})
+    table.insert(results, value_expect(child_int ~= nil, true, "instantiate TemplateChild<int>"))
+    -- extra should be after Foo's fields (Foo size = 0x14 = 20 bytes)
+    local foo_size = ns:find_struct("Foo"):size()
+    table.insert(results, value_expect(child_int:find_variable("extra"):offset(), foo_size, "template child: extra at parent end"))
+
     local total_passed = 0
 
     for k, v in pairs(results) do

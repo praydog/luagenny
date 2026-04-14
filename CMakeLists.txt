@@ -69,12 +69,12 @@ find_package(sol2)
 
 include(FetchContent)
 
-message(STATUS "Fetching sdkgenny (402805d2f3f6d8dcda40b6914111ce385e818377)...")
+message(STATUS "Fetching sdkgenny (c957b569a06c1a9365e659c35635c79e2e505ad5)...")
 FetchContent_Declare(sdkgenny
 	GIT_REPOSITORY
 		"https://github.com/praydog/sdkgenny.git"
 	GIT_TAG
-		402805d2f3f6d8dcda40b6914111ce385e818377
+		c957b569a06c1a9365e659c35635c79e2e505ad5
 )
 FetchContent_MakeAvailable(sdkgenny)
 
@@ -263,6 +263,9 @@ if(NOT CMKR_VS_STARTUP_PROJECT)
 	set_property(DIRECTORY ${PROJECT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT repl)
 endif()
 
+set(CMKR_TARGET repl)
+include("test/codegen_test.cmake")
+
 enable_testing()
 
 add_test(
@@ -303,7 +306,3 @@ if(LUAGENNY_BUILD_STATIC) # static
 			luagenny_static
 	)
 endif()
-
-
-# Codegen validation test (not managed by cmkr)
-include(test/codegen_test.cmake OPTIONAL)

@@ -16,7 +16,7 @@ packages = [
 
 [fetch-content.sdkgenny]
 git = "https://github.com/praydog/sdkgenny.git"
-tag = "402805d2f3f6d8dcda40b6914111ce385e818377"
+tag = "c957b569a06c1a9365e659c35635c79e2e505ad5"
 
 
 [find-package]
@@ -89,6 +89,7 @@ link-libraries = [
     "sdkgenny::sdkgenny"
 ]
 compile-features = ["cxx_std_20"]
+include-after = ["test/codegen_test.cmake"]
 
 [[test]]
 name = "mytest"

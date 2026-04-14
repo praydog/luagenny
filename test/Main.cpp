@@ -252,6 +252,32 @@ struct TemplateList {
     int size
 }
 
+// Test: + delta in template (Copilot comment 2)
+template <typename T>
+struct TemplateDelta {
+    int header
+    T value + 4
+}
+
+// Test: + delta after template param (pathological case)
+template <typename T>
+struct TemplateDeltaAfterT {
+    T header
+    int value + 4
+}
+
+// Test: template class (Copilot comment 3)
+template <typename T>
+class TemplateClassBox {
+    T* data @ 0x8
+}
+
+// Test: template with parent (Copilot comment 4)
+template <typename T>
+struct TemplateChild : Foo {
+    T extra
+}
+
 struct TemplateUser {
     TemplateBox<Foo> box
     TemplatePair<int, float> pair
