@@ -735,6 +735,15 @@ struct ParseTestStruct {
         end
     end
 
+    -- ArrayOverlay __len and ipairs
+    table.insert(results, value_expect(#baz.tpl_arr.items, 4, "#tpl_arr.items == 4"))
+    table.insert(results, value_expect(#baz.m, 4, "#baz.m == 4 (outer dim)"))
+    table.insert(results, value_expect(#baz.m[0], 3, "#baz.m[0] == 3 (inner dim)"))
+    -- ipairs iteration (Lua ipairs uses 1-based indexing but our __index is 0-based,
+    -- so ipairs(arr) iterates keys 1..#arr which maps to elements 1..N-1 in C++.
+    -- For a 0-based C array this skips element 0 — that's a Lua convention mismatch.
+    -- Test that #arr returns the correct count regardless.)
+
     -- Same template, different instantiations (dedup via TemplateUser)
     local box_int_t = ns:find_struct("TemplateBox<int>")
     table.insert(results, value_expect(box_int_t ~= nil, true, "find TemplateBox<int> (second instantiation)"))

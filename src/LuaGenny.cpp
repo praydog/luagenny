@@ -390,6 +390,10 @@ public:
         sol::function lua_writer = sol::state_view{s}["sdkgenny_writer"];
         lua_writer(s, elem_addr, elem_size, value);
     }
+
+    size_t length() const {
+        return m_type->count();
+    }
 };
 
 sol::object standalone_parse(sol::this_state s, uintptr_t address, sdkgenny::Type* t, sdkgenny::Variable* v) {
@@ -552,7 +556,8 @@ int open(lua_State* l) {
         "type", &api::ArrayOverlay::type_,
         "address", &api::ArrayOverlay::address,
         sol::meta_function::index, &api::ArrayOverlay::index,
-        sol::meta_function::new_index, &api::ArrayOverlay::new_index
+        sol::meta_function::new_index, &api::ArrayOverlay::new_index,
+        sol::meta_function::length, &api::ArrayOverlay::length
     );
 
     sdkgenny.push();
