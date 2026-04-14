@@ -303,3 +303,7 @@ if(LUAGENNY_BUILD_STATIC) # static
 			luagenny_static
 	)
 endif()
+
+
+# Codegen validation test (not managed by cmkr)
+include(test/codegen_test.cmake OPTIONAL)
