@@ -58,6 +58,12 @@ struct Bar {
     };
 };
 
+struct DeltaTest {
+    int first{};
+    char pad[4]{};  // 4-byte gap
+    int second{};
+};
+
 struct Thing {
     int abc{};
 };
@@ -153,6 +159,7 @@ struct Baz : Bar {
     TemplateMixed<float> tpl_mixed{};
     TemplateArray<int> tpl_arr{};
     TemplateList<Thing> tpl_list{};
+    DeltaTest delta_test{};
     __declspec(align(sizeof(void*))) RTTITest* rtti{};
     E* e_ptr{};
 };
@@ -170,6 +177,11 @@ type char 1
 type wchar_t 2
 
 struct RTTITest{}
+
+struct DeltaTest {
+    int first
+    int second + 4
+}
 
 enum Place {
     EARTH = 1,
@@ -266,6 +278,15 @@ struct TemplateDeltaAfterT {
     int value + 4
 }
 
+// Test: bitfields in template struct (Copilot comment 1)
+template <typename T>
+struct TemplateBitfield {
+    T flags
+    int bf_a : 4
+    int bf_b : 4
+    int after_bf
+}
+
 // Test: template class (Copilot comment 3)
 template <typename T>
 class TemplateClassBox {
@@ -306,6 +327,7 @@ struct Baz : Bar 0x100 {
     TemplateMixed<float> tpl_mixed
     TemplateArray<int> tpl_arr
     TemplateList<Thing> tpl_list
+    DeltaTest delta_test
 	//RTTITest* test + 5
 }
 
@@ -423,6 +445,8 @@ int main(int argc, char* argv[]) {
     baz->tpl_list.data = thing_ptrs;
     baz->tpl_list.capacity = 5;
     baz->tpl_list.size = 5;
+    baz->delta_test.first = 111;
+    baz->delta_test.second = 222;
 
     lua["bazaddr"] = (uintptr_t)baz;
 

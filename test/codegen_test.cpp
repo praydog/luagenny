@@ -13,6 +13,7 @@
 #include "TemplateMixed.hpp"
 #include "TemplateArray.hpp"
 #include "TemplateList.hpp"
+#include "TemplateBitfield.hpp"
 #include "Foo.hpp"
 #include "TemplateUser.hpp"
 
@@ -26,6 +27,7 @@ using MixedFloat = TemplateMixed<float>;
 using MixedInt = TemplateMixed<int>;
 using ArrInt = TemplateArray<int>;
 using ListFoo = TemplateList<Foo>;
+using BfInt = TemplateBitfield<int>;
 
 // Size assertions for template instantiations
 static_assert(sizeof(BoxInt) == 8 + sizeof(void*), "TemplateBox<int> size");
@@ -63,6 +65,10 @@ static_assert(offsetof(ListFoo, capacity) == sizeof(void*), "TemplateList.capaci
 static_assert(offsetof(ListFoo, size) == sizeof(void*) + 4, "TemplateList.size offset");
 static_assert(sizeof(ListFoo) == sizeof(void*) + 8, "TemplateList<Foo> size");
 
+// TemplateBitfield: bitfields should share storage unit
+static_assert(sizeof(BfInt) == 12, "TemplateBitfield<int> size: int(4) + bitfield unit(4) + int(4)");
+static_assert(offsetof(BfInt, flags) == 0, "TemplateBitfield.flags offset");
+static_assert(offsetof(BfInt, after_bf) == 8, "TemplateBitfield.after_bf offset");
 
 int main() {
     int failures = 0;

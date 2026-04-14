@@ -149,7 +149,7 @@ function do_tests()
     table.insert(results, value_expect(#known_variables == #known_variables2, true, "#known_variables == #known_variables2"))
 
     table.insert(results, value_expect(known_variables ~= nil, true, "known_variables ~= nil"))
-    table.insert(results, value_expect(#known_variables, 17, "#known_variables"))
+    table.insert(results, value_expect(#known_variables, 18, "#known_variables"))
 
     for k, v in pairs(known_variables) do
         table.insert(results, value_expect(known_variables[k] == known_variables2[k], true, "known_variables[" .. tostring(k) .. "] == known_variables2[" .. tostring(k) .. "]"))
@@ -875,6 +875,27 @@ struct ParseTestStruct {
     -- extra should be after Foo's fields (Foo size = 0x14 = 20 bytes)
     local foo_size = ns:find_struct("Foo"):size()
     table.insert(results, value_expect(child_int:find_variable("extra"):offset(), foo_size, "template child: extra at parent end"))
+
+    -- Comment 1: bitfields in template struct
+    local bf_t = ns:find_struct("TemplateBitfield")
+    table.insert(results, value_expect(bf_t ~= nil, true, "find TemplateBitfield"))
+    table.insert(results, value_expect(bf_t:is_template(), true, "TemplateBitfield:is_template()"))
+    -- Instantiate and verify fields exist
+    local bf_int = bf_t:instantiate({ns:find_type("int")})
+    table.insert(results, value_expect(bf_int ~= nil, true, "instantiate TemplateBitfield<int>"))
+    table.insert(results, value_expect(bf_int:find_variable("flags"):type():name(), "int", "bf: flags is int"))
+    table.insert(results, value_expect(bf_int:find_variable("bf_a"):is_bitfield(), true, "bf: bf_a is bitfield"))
+    table.insert(results, value_expect(bf_int:find_variable("bf_b"):is_bitfield(), true, "bf: bf_b is bitfield"))
+    -- after_bf should be after the bitfield storage unit, not double-counted
+    -- flags(int=4) + bitfield storage(int=4) + after_bf should be at offset 8
+    table.insert(results, value_expect(bf_int:find_variable("after_bf"):offset(), 8, "bf: after_bf at correct offset"))
+
+    -- Regression: non-template + delta struct with live overlay reads
+    table.insert(results, value_expect(baz.delta_test.first, 111, "delta_test.first (non-template + delta)"))
+    table.insert(results, value_expect(baz.delta_test.second, 222, "delta_test.second (non-template + delta)"))
+    -- Verify the offset: first(4) + pad(4) + second at offset 8
+    local dt = ns:find_struct("DeltaTest")
+    table.insert(results, value_expect(dt:find_variable("second"):offset(), 8, "DeltaTest.second offset = 4 + delta(4) = 8"))
 
     local total_passed = 0
 
