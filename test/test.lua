@@ -1154,6 +1154,59 @@ struct ParseTestStruct {
         end
     end
 
+    --- Duplicate template parameter names
+    do
+        local dsdk = sdkgenny.parse("type int 4 [[i32]]\ntype float 4 [[f32]]")
+        local dns = dsdk:global_ns()
+        local dtpl = dns:struct("DupParam")
+        dtpl:template_parameter("T")
+        dtpl:template_parameter("T")  -- duplicate
+        -- Should have 1 param, not 2 (deduplicated)
+        table.insert(results, value_expect(#dtpl:template_parameters(), 1, "duplicate template param deduplicated"))
+        -- Instantiation with 1 arg should succeed since there's really only 1 param
+        local int_t = dns:find_type("int")
+        local inst = dtpl:instantiate({int_t})
+        table.insert(results, value_expect(inst ~= nil, true, "instantiate with deduped param succeeds"))
+    end
+
+    --- Template codegen: + delta after known-size field emits correct padding
+    do
+        local gsdk = sdkgenny.parse("type int 4 [[i32]]\ntemplate <typename T>\nstruct DeltaGen { int before\n int after + 4 }")
+        local gns = gsdk:global_ns()
+        local ok, err = pcall(function() gsdk:generate("test/deltagen_out/") end)
+        table.insert(results, value_expect(ok, true, "delta template generates"))
+        if ok then
+            local f = io.open("test/deltagen_out/DeltaGen.hpp", "r")
+            table.insert(results, value_expect(f ~= nil, true, "DeltaGen.hpp generated"))
+            if f then
+                local content = f:read("*a")
+                f:close()
+                -- + 4 creates a gap: before ends at 4, after at 8. Padding expected.
+                local has_pad = content:find('pad_') ~= nil
+                table.insert(results, value_expect(has_pad, true, "DeltaGen.hpp has padding for + delta gap"))
+            end
+        end
+    end
+
+    --- Template codegen: + delta after size-0 T should NOT emit padding
+    do
+        local gsdk2 = sdkgenny.parse("type int 4 [[i32]]\ntemplate <typename T>\nstruct DeltaGenT { T value\n int after + 4 }")
+        local gns2 = gsdk2:global_ns()
+        local ok2, err2 = pcall(function() gsdk2:generate("test/deltagen_out/") end)
+        table.insert(results, value_expect(ok2, true, "delta-after-T template generates"))
+        if ok2 then
+            local f = io.open("test/deltagen_out/DeltaGenT.hpp", "r")
+            table.insert(results, value_expect(f ~= nil, true, "DeltaGenT.hpp generated"))
+            if f then
+                local content = f:read("*a")
+                f:close()
+                -- After size-0 T, we can't compute padding. No pad_ expected.
+                local has_pad = content:find('pad_') ~= nil
+                table.insert(results, value_expect(has_pad, false, "DeltaGenT.hpp no padding after unknown-size T"))
+            end
+        end
+    end
+
     local total_passed = 0
 
     for k, v in pairs(results) do
