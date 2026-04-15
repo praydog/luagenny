@@ -971,6 +971,23 @@ struct ParseTestStruct {
     -- flags(int=4) + bitfield storage(int=4) + after_bf should be at offset 8
     table.insert(results, value_expect(bf_int:find_variable("after_bf"):offset(), 8, "bf: after_bf at correct offset"))
 
+    -- Programmatic: template bitfield with gap (bits 4-7 skipped)
+    local gap_tpl = fresh_ns:struct("GapBitfield")
+    local gap_T = gap_tpl:template_parameter("T")
+    local gap_bf_a = gap_tpl:variable("bf_a")
+    gap_bf_a:type(build_int):offset(0):bit_size(4):bit_offset(0)
+    local gap_bf_b = gap_tpl:variable("bf_b")
+    gap_bf_b:type(build_int):offset(0):bit_size(4):bit_offset(8)
+    local gap_data = gap_tpl:variable("data")
+    gap_data:type(gap_T):offset(4)
+
+    -- Instantiate and check offsets survived
+    local gap_inst = gap_tpl:instantiate({build_int})
+    table.insert(results, value_expect(gap_inst ~= nil, true, "gap bitfield template instantiated"))
+    table.insert(results, value_expect(gap_inst:find_variable("bf_a"):bit_offset(), 0, "gap bf_a bit_offset 0"))
+    table.insert(results, value_expect(gap_inst:find_variable("bf_b"):bit_offset(), 8, "gap bf_b bit_offset 8 (gap at 4-7)"))
+    table.insert(results, value_expect(gap_inst:find_variable("data"):offset(), 4, "gap data at offset 4"))
+
     -- Namespace collision in template instantiation names
     local nscol = ns:find_struct("NsCollisionTest")
     table.insert(results, value_expect(nscol ~= nil, true, "find NsCollisionTest"))
