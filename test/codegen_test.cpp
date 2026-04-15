@@ -25,6 +25,8 @@ using ushort = uint16_t;
 #include "TemplateVirtual.hpp"
 #include "TemplateUser.hpp"
 #include "VirtualBase.hpp"
+#include "TemplateVirtualChild.hpp"
+#include "TemplateVirtualChild2.hpp"
 #include "TemplatePtrUser.hpp"
 
 
@@ -41,6 +43,8 @@ using BfInt = TemplateBitfield<int>;
 using ChildInt = TemplateChild<int>;
 using ChildCplxInt = TemplateChildComplex<int>;
 using VirtInt = TemplateVirtual<int>;
+using VirtChildInt = TemplateVirtualChild<int>;
+using VirtChild2Int = TemplateVirtualChild2<int>;
 
 // Size assertions for template instantiations
 static_assert(sizeof(BoxInt) == 8 + sizeof(void*), "TemplateBox<int> size");
@@ -100,6 +104,11 @@ static_assert(sizeof(VirtInt) >= 0xC, "TemplateVirtual size includes vtable + da
 static_assert(offsetof(VirtualBase, data) == 0x8, "VirtualBase.data @ 0x8");
 static_assert(sizeof(VirtualBase) >= 0xC, "VirtualBase size includes vtable + data");
 
+// TemplateVirtualChild: inherits VirtualBase, no own virtuals — no vtable double-count
+static_assert(offsetof(VirtChildInt, extra) == sizeof(VirtualBase), "VirtualChild.extra after parent");
+
+// TemplateVirtualChild2: inherits VirtualBase AND has own virtual — must not double-count vtable
+static_assert(offsetof(VirtChild2Int, extra) == 0x10, "VirtualChild2.extra @ 0x10");
 // TemplatePtrUser: uses template instantiations through pointers (soft deps)
 static_assert(offsetof(TemplatePtrUser, box_ptr) == 0, "TemplatePtrUser.box_ptr offset");
 static_assert(offsetof(TemplatePtrUser, pair_ptr) == sizeof(void*), "TemplatePtrUser.pair_ptr offset");

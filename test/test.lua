@@ -915,6 +915,23 @@ struct ParseTestStruct {
     -- size should account for vtable ptr + data
     table.insert(results, value_expect(virt_int:size() >= 0xC, true, "virtual template: size includes vtable + data"))
 
+    -- Template with parent AND virtual (should not double-count vtable)
+    local vchild_t = ns:find_struct("TemplateVirtualChild")
+    table.insert(results, value_expect(vchild_t ~= nil, true, "find TemplateVirtualChild"))
+    local vbase_size = ns:find_struct("VirtualBase"):size()
+    local vchild_int = vchild_t:instantiate({ns:find_type("int")})
+    table.insert(results, value_expect(vchild_int ~= nil, true, "instantiate TemplateVirtualChild<int>"))
+    -- extra should be right after VirtualBase, not double-counted with vtable
+    table.insert(results, value_expect(vchild_int:find_variable("extra"):offset(), vbase_size, "virtual child: extra at parent end (no vtable double-count)"))
+
+    -- Template with parent AND its OWN virtual (double-count vtable test)
+    local vchild2_t = ns:find_struct("TemplateVirtualChild2")
+    table.insert(results, value_expect(vchild2_t ~= nil, true, "find TemplateVirtualChild2"))
+    local vchild2_int = vchild2_t:instantiate({ns:find_type("int")})
+    table.insert(results, value_expect(vchild2_int ~= nil, true, "instantiate TemplateVirtualChild2<int>"))
+    -- extra @ 0x10 is explicit, should be preserved regardless of vtable accounting
+    table.insert(results, value_expect(vchild2_int:find_variable("extra"):offset(), 0x10, "virtual child2: extra @ 0x10 preserved"))
+
     -- Comment 1: bitfields in template struct
     local bf_t = ns:find_struct("TemplateBitfield")
     table.insert(results, value_expect(bf_t ~= nil, true, "find TemplateBitfield"))

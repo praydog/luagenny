@@ -327,6 +327,20 @@ struct TemplateVirtual {
     T data @ 0x8
 }
 
+// Test: template with parent AND virtual function (double-count vtable test)
+template <typename T>
+struct TemplateVirtualChild : VirtualBase {
+    T extra
+}
+
+// Test: template with parent AND its OWN virtual function (double-count vtable test)
+template <typename T>
+struct TemplateVirtualChild2 : VirtualBase {
+    virtual int* child_virtual() @ 2
+    T extra @ 0x10
+}
+
+
 struct TemplateUser {
     TemplateBox<Foo> box
     TemplatePair<int, float> pair
