@@ -7,6 +7,7 @@ del /q test\*.hpp 2>nul
 if exist test\selfref_out rd /s /q test\selfref_out 2>nul
 if exist test\bug19_out rd /s /q test\bug19_out 2>nul
 if exist test\deltagen_out rd /s /q test\deltagen_out 2>nul
+if exist test\mono_out rd /s /q test\mono_out 2>nul
 
 echo === x64 ===
 call "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat" >nul 2>&1

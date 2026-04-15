@@ -1,9 +1,9 @@
 """
-Verify generated .hpp headers using libclang.
+Verify generated .hpp headers by compiling them as C++.
 
-Parses the generated headers as C++, instantiates templates with test types,
-and checks sizeof/offsetof for every struct and field. Catches layout issues
-that static_asserts might miss (e.g. wrong offset comments, overlapping fields).
+Builds a single C++ source that includes all generated headers, instantiates
+templates with test types, and checks sizeof/offsetof via static_assert.
+Catches layout issues (e.g. wrong offset comments, overlapping fields).
 """
 
 import sys
@@ -28,10 +28,10 @@ def main():
     print(f"Found {len(hpp_files)} generated headers")
     
     # Build a test source that includes everything and instantiates templates
-    source = '// Avoid stdlib headers for cross-compiler portability\n'
-    source += '#ifndef offsetof\n#define offsetof(t,m) __builtin_offsetof(t,m)\n#endif\n'
-    source += 'using ushort = unsigned short;\n'
-    source += 'typedef unsigned long long uintptr_t;\n\n'
+    source = '// Standard headers for portable type checks\n'
+    source += '#include <cstddef>\n'
+    source += '#include <cstdint>\n'
+    source += 'using ushort = unsigned short;\n\n'
     
     # Include all headers
     for hpp in hpp_files:

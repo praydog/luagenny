@@ -780,6 +780,14 @@ struct ParseTestStruct {
     -- For a 0-based C array this skips element 0 — that's a Lua convention mismatch.
     -- Test that #arr returns the correct count regardless.)
 
+    -- ArrayOverlay bounds checking
+    local oob_read = baz.tpl_arr.items[-1]
+    table.insert(results, value_expect(oob_read == nil, true, "array[-1] returns nil (OOB)"))
+    local oob_read2 = baz.tpl_arr.items[4]  -- count is 4, valid indices 0-3
+    table.insert(results, value_expect(oob_read2 == nil, true, "array[count] returns nil (OOB)"))
+    local oob_read3 = baz.tpl_arr.items[999]
+    table.insert(results, value_expect(oob_read3 == nil, true, "array[999] returns nil (OOB)"))
+
     -- Same template, different instantiations (dedup via TemplateUser)
     local box_int_t = ns:find_struct("TemplateBox<int>")
     table.insert(results, value_expect(box_int_t ~= nil, true, "find TemplateBox<int> (second instantiation)"))
@@ -1255,6 +1263,34 @@ struct ParseTestStruct {
                 -- Must emit padding so C++ compiled layout matches the type model.
                 local has_pad = content:find('pad_') ~= nil
                 table.insert(results, value_expect(has_pad, true, "DeltaGenT.hpp emits fixed delta padding after T"))
+            end
+        end
+    end
+
+    --- Template codegen: current_offset must not go backwards on out-of-order @ offsets
+    do
+        -- Template with T* (known size) + out-of-order pinned offsets.
+        -- Without monotonic current_offset, padding between b and c would be overcounted.
+        local gsdk = sdkgenny.parse("type int 4 [[i32]]\ntemplate <typename T>\nstruct MonoTest 0x20 { T* data @ 0x0\n int a @ 0x10\n int b @ 0x4\n int c @ 0x18 }")
+        local gns = gsdk:global_ns()
+        local ok, err = pcall(function() gsdk:generate("test/mono_out/") end)
+        table.insert(results, value_expect(ok, true, "monotonic offset template generates"))
+        if ok then
+            local f = io.open("test/mono_out/MonoTest.hpp", "r")
+            table.insert(results, value_expect(f ~= nil, true, "MonoTest.hpp generated"))
+            if f then
+                local content = f:read("*a")
+                f:close()
+                -- Trailing padding should be 0x20 - 0x1c = 0x4, not corrupted
+                -- by current_offset going backwards from 0x14 to 0x4.
+                local size_match = content:match('Size: (0x%x+)')
+                table.insert(results, value_expect(size_match, "0x20", "MonoTest size is 0x20"))
+                -- Check that pad between b(@4,size4=end 8) and c(@0x18) is correct.
+                -- Without fix: current_offset goes to 0x4 after b, then pad to 0x18
+                -- would be 0x14 bytes (wrong). With fix: current_offset stays at 0x14
+                -- (from a@0x10+4), b doesn't lower it, pad to 0x18 is 0x4 (correct).
+                local bad_pad = content:find('pad_4%[0x14%]')
+                table.insert(results, value_expect(bad_pad == nil, true, "no oversized pad from backwards offset"))
             end
         end
     end

@@ -369,6 +369,10 @@ public:
             return sol::make_object(s, sol::lua_nil);
         }
 
+        if (idx < 0 || static_cast<size_t>(idx) >= m_type->count()) {
+            return sol::make_object(s, sol::lua_nil);
+        }
+
         auto elem_addr = m_address + (idx * elem_size);
         return sol::make_object(s, standalone_parse(s, elem_addr, elem, nullptr));
     }
@@ -383,6 +387,10 @@ public:
         auto elem_size = elem->size();
 
         if (elem_size == 0) {
+            return;
+        }
+
+        if (idx < 0 || static_cast<size_t>(idx) >= m_type->count()) {
             return;
         }
 
