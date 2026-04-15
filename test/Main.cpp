@@ -385,6 +385,14 @@ struct NsCollisionTest {
     TemplateBox<NsB.Item> box_b
 }
 
+// Test: multiple soft-dep pointers to same template (duplicate include test)
+struct DuplicateIncludeTest {
+    TemplateBox<Foo>* ptr_a
+    TemplateBox<int>* ptr_b
+    TemplatePair<int, float>* ptr_c
+    TemplatePair<float, int>* ptr_d
+}
+
 struct TemplateUser {
     TemplateBox<Foo> box
     TemplatePair<int, float> pair

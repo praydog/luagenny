@@ -16,7 +16,7 @@ packages = [
 
 [fetch-content.sdkgenny]
 git = "https://github.com/praydog/sdkgenny.git"
-tag = "d4fee1c4a116e8920acc6483f1052217303a4927"
+tag = "82ac0b2d09d34572be2c80cadb092a24dcbaa744"
 
 
 [find-package]
