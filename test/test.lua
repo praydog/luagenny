@@ -686,6 +686,12 @@ struct ParseTestStruct {
     table.insert(results, value_expect(baz.tpl_box.data.a, 42, "baz.tpl_box.data.a (Foo* through template)"))
     table.insert(results, value_expect(baz.tpl_box.data.b, 1337, "baz.tpl_box.data.b (Foo* through template)"))
     table.insert(results, value_expect(round(baz.tpl_box.data.c, 1), 77.7, "baz.tpl_box.data.c (float through template)"))
+    -- Write through TemplateBox pointer field
+    local old_box_a = baz.tpl_box.data.a
+    baz.tpl_box.data.a = 9876
+    table.insert(results, value_expect(baz.tpl_box.data.a, 9876, "tpl_box.data.a write"))
+    baz.tpl_box.data.a = old_box_a
+    table.insert(results, value_expect(baz.tpl_box.data.a, old_box_a, "tpl_box.data.a restored"))
 
     -- Read TemplatePair<int, float> fields
     table.insert(results, value_expect(baz.tpl_pair.key, 99, "baz.tpl_pair.key (int through template)"))
@@ -728,6 +734,12 @@ struct ParseTestStruct {
     table.insert(results, value_expect(baz.tpl_mixed.header, 0xCC, "tpl_mixed.header write"))
     baz.tpl_mixed.header = old_mixed_hdr
     table.insert(results, value_expect(baz.tpl_mixed.header, old_mixed_hdr, "tpl_mixed.header restored"))
+    -- Write through TemplateMixed T value field
+    local old_mixed_val = baz.tpl_mixed.value
+    baz.tpl_mixed.value = 99.99
+    table.insert(results, value_expect(round(baz.tpl_mixed.value, 2), 99.99, "tpl_mixed.value write (T=float)"))
+    baz.tpl_mixed.value = old_mixed_val
+    table.insert(results, value_expect(round(baz.tpl_mixed.value, 2), round(old_mixed_val, 2), "tpl_mixed.value restored"))
 
     -- Array template: T[4] items
     local arr_int_t = ns:find_struct("TemplateArray<int>")
@@ -743,6 +755,12 @@ struct ParseTestStruct {
     for i = 0, 3 do
         table.insert(results, value_expect(baz.tpl_arr.items[i], (i + 1) * 10, "tpl_arr.items[" .. i .. "] via ArrayOverlay"))
     end
+    -- Write through T[4] array elements
+    local old_arr_0 = baz.tpl_arr.items[0]
+    baz.tpl_arr.items[0] = 5555
+    table.insert(results, value_expect(baz.tpl_arr.items[0], 5555, "tpl_arr.items[0] write"))
+    baz.tpl_arr.items[0] = old_arr_0
+    table.insert(results, value_expect(baz.tpl_arr.items[0], old_arr_0, "tpl_arr.items[0] restored"))
 
     -- Also test the pre-existing int[4][3] m field on Bar (never tested before!)
     for i = 0, 3 do
@@ -967,6 +985,12 @@ struct ParseTestStruct {
     -- Regression: non-template + delta struct with live overlay reads
     table.insert(results, value_expect(baz.delta_test.first, 111, "delta_test.first (non-template + delta)"))
     table.insert(results, value_expect(baz.delta_test.second, 222, "delta_test.second (non-template + delta)"))
+    -- Write through + delta field
+    local old_delta_second = baz.delta_test.second
+    baz.delta_test.second = 4444
+    table.insert(results, value_expect(baz.delta_test.second, 4444, "delta_test.second write"))
+    baz.delta_test.second = old_delta_second
+    table.insert(results, value_expect(baz.delta_test.second, old_delta_second, "delta_test.second restored"))
     -- Verify the offset: first(4) + pad(4) + second at offset 8
     local dt = ns:find_struct("DeltaTest")
     table.insert(results, value_expect(dt:find_variable("second"):offset(), 8, "DeltaTest.second offset = 4 + delta(4) = 8"))
