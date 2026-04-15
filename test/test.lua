@@ -727,6 +727,8 @@ struct ParseTestStruct {
     table.insert(results, value_expect(baz.tpl_mixed.header, 0xAA, "tpl_mixed.header read"))
     table.insert(results, value_expect(round(baz.tpl_mixed.value, 2), 6.28, "tpl_mixed.value read (T=float)"))
     table.insert(results, value_expect(baz.tpl_mixed.footer, 0xBB, "tpl_mixed.footer read"))
+    -- T* ptr field: dereference should give the same value as tpl_mixed.value
+    table.insert(results, value_expect(round(baz.tpl_mixed.ptr:deref(), 2), 6.28, "tpl_mixed.ptr:deref() == value (T* through template)"))
 
     -- Write + restore on mixed template
     local old_mixed_hdr = baz.tpl_mixed.header
