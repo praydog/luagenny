@@ -1132,6 +1132,28 @@ struct ParseTestStruct {
         local dv = dinst:find_variable("delta0")
         table.insert(results, value_expect(dv:offset(), 0x14, "+ 0 delta appended after pinned, not pinned itself"))
     end
+
+    --- Self-referential template doesn't include itself
+    do
+        local ssdk = sdkgenny.parse("type int 4 [[i32]]\ntemplate <typename T>\nstruct Node { T value\n Node<T>* next }")
+        local sns = ssdk:global_ns()
+        -- generate should succeed and the Node.hpp should not #include itself
+        local ok, err = pcall(function() ssdk:generate("test/selfref_out/") end)
+        table.insert(results, value_expect(ok, true, "self-referential template generates"))
+        if not ok then print("  error: " .. tostring(err)) end
+        if ok then
+            -- Read generated header and check it doesn't include itself
+            local f = io.open("test/selfref_out/Node.hpp", "r")
+            table.insert(results, value_expect(f ~= nil, true, "Node.hpp generated"))
+            if f then
+                local content = f:read("*a")
+                f:close()
+                local has_self_include = content:find('#include.-Node') ~= nil
+                table.insert(results, value_expect(has_self_include, false, "Node.hpp does not include itself"))
+            end
+        end
+    end
+
     local total_passed = 0
 
     for k, v in pairs(results) do

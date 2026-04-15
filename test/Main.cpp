@@ -476,7 +476,7 @@ int main(int argc, char* argv[]) {
     sol::state lua{};
 
     lua.open_libraries(sol::lib::base, sol::lib::package, sol::lib::string, sol::lib::math, sol::lib::table, sol::lib::bit32,
-    sol::lib::utf8, sol::lib::os, sol::lib::coroutine);
+    sol::lib::utf8, sol::lib::os, sol::lib::coroutine, sol::lib::io);
 
     // Add the sdkgenny bindings
     luaopen_luagenny(lua);
