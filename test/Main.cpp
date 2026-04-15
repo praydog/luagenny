@@ -319,6 +319,14 @@ struct TemplateBitfieldPinned 0x10 {
     T data @ 0x4
 }
 
+// Test: padding after size-0 T followed by @ offset
+template <typename T>
+struct TemplatePadAfterT {
+    int header
+    T value
+    int pinned @ 0x10
+}
+
 // Test: template class (Copilot comment 3)
 template <typename T>
 class TemplateClassBox {
