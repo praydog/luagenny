@@ -141,6 +141,46 @@ struct TemplateList {
     int size{};
 };
 
+template<typename T>
+struct TemplateDeltaAfterT {
+    T header{};
+    char delta_pad[4]{};  // the + 4 gap
+    int value{};
+};
+
+template<typename T>
+struct TemplateDelta {
+    int header{};
+    char delta_pad[4]{};  // the + 4 gap
+    T value{};
+};
+
+template<typename T>
+struct TemplateSized {
+    int header{};
+    T value{};
+    char trailing_pad[0x20 - sizeof(int) - sizeof(T)]{};  // pad to 0x20
+};
+
+template<typename T>
+struct TemplateBitfield {
+    T flags{};
+    int bf_storage{};  // holds bf_a:4 + bf_b:4
+    int after_bf{};
+};
+
+template<typename T>
+struct TemplateChild : Foo {
+    T extra{};
+};
+
+template<typename T>
+struct TemplateChildComplex : Bar {
+    T value{};
+    T* ptr{};
+    int footer{};
+};
+
 struct Baz : Bar {
     TA ta{};
     int e{};
@@ -160,6 +200,12 @@ struct Baz : Bar {
     TemplateArray<int> tpl_arr{};
     TemplateList<Thing> tpl_list{};
     DeltaTest delta_test{};
+    TemplateDeltaAfterT<float> tpl_delta_after_t{};
+    TemplateDelta<int> tpl_delta{};
+    TemplateSized<float> tpl_sized{};
+    TemplateBitfield<int> tpl_bitfield{};
+    TemplateChild<int> tpl_child{};
+    TemplateChildComplex<int> tpl_child_complex{};
     __declspec(align(sizeof(void*))) RTTITest* rtti{};
     E* e_ptr{};
 };
@@ -429,6 +475,12 @@ struct Baz : Bar 0x100 {
     TemplateArray<int> tpl_arr
     TemplateList<Thing> tpl_list
     DeltaTest delta_test
+    TemplateDeltaAfterT<float> tpl_delta_after_t
+    TemplateDelta<int> tpl_delta
+    TemplateSized<float> tpl_sized
+    TemplateBitfield<int> tpl_bitfield
+    TemplateChild<int> tpl_child
+    TemplateChildComplex<int> tpl_child_complex
 	//RTTITest* test + 5
 }
 
@@ -548,6 +600,28 @@ int main(int argc, char* argv[]) {
     baz->tpl_list.size = 5;
     baz->delta_test.first = 111;
     baz->delta_test.second = 222;
+    baz->tpl_delta_after_t.header = 3.14f;
+    baz->tpl_delta_after_t.value = 999;
+    // TemplateDelta<int>: int header; [4-byte gap]; int value
+    baz->tpl_delta.header = 0xDD;
+    baz->tpl_delta.value = 555;
+    // TemplateSized<float>: int header; float value; trailing pad to 0x20
+    baz->tpl_sized.header = 0xEE;
+    baz->tpl_sized.value = 1.5f;
+    // TemplateBitfield<int>: int flags; int bf_storage(bf_a:4,bf_b:4); int after_bf
+    baz->tpl_bitfield.flags = 0xFF;
+    baz->tpl_bitfield.bf_storage = (0x5) | (0xA << 4);  // bf_a=5, bf_b=10
+    baz->tpl_bitfield.after_bf = 777;
+    // TemplateChild<int>: inherits Foo, then int extra
+    baz->tpl_child.a = 10;
+    baz->tpl_child.b = 20;
+    baz->tpl_child.c = 30.0f;
+    baz->tpl_child.extra = 444;
+    // TemplateChildComplex<int>: inherits Bar, then int value; int* ptr; int footer
+    baz->tpl_child_complex.d = 50;
+    baz->tpl_child_complex.value = 888;
+    baz->tpl_child_complex.ptr = &baz->tpl_child_complex.value;
+    baz->tpl_child_complex.footer = 0xAB;
 
     lua["bazaddr"] = (uintptr_t)baz;
 

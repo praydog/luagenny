@@ -149,7 +149,7 @@ function do_tests()
     table.insert(results, value_expect(#known_variables == #known_variables2, true, "#known_variables == #known_variables2"))
 
     table.insert(results, value_expect(known_variables ~= nil, true, "known_variables ~= nil"))
-    table.insert(results, value_expect(#known_variables, 18, "#known_variables"))
+    table.insert(results, value_expect(#known_variables, 24, "#known_variables"))
 
     for k, v in pairs(known_variables) do
         table.insert(results, value_expect(known_variables[k] == known_variables2[k], true, "known_variables[" .. tostring(k) .. "] == known_variables2[" .. tostring(k) .. "]"))
@@ -894,6 +894,57 @@ struct ParseTestStruct {
     table.insert(results, value_expect(delta2_float ~= nil, true, "instantiate TemplateDeltaAfterT<float>"))
     -- value should be at 4 (float) + 4 (delta) = 8
     table.insert(results, value_expect(delta2_float:find_variable("value"):offset(), 8, "delta-after-T: value at header_size + delta"))
+    -- Live overlay read for TemplateDeltaAfterT<float>: value at offset 8 (header=4 + delta=4)
+    table.insert(results, value_expect(round(baz.tpl_delta_after_t.header, 2), 3.14, "delta-after-T: live header read"))
+    table.insert(results, value_expect(baz.tpl_delta_after_t.value, 999, "delta-after-T: live value read == 999"))
+
+    -- Live overlay: TemplateDelta<int> (int header; [4-byte gap]; int value)
+    table.insert(results, value_expect(baz.tpl_delta.header, 0xDD, "tpl_delta.header read"))
+    table.insert(results, value_expect(baz.tpl_delta.value, 555, "tpl_delta.value read (through +4 gap)"))
+    local old_delta_val = baz.tpl_delta.value
+    baz.tpl_delta.value = 1234
+    table.insert(results, value_expect(baz.tpl_delta.value, 1234, "tpl_delta.value write"))
+    baz.tpl_delta.value = old_delta_val
+    table.insert(results, value_expect(baz.tpl_delta.value, old_delta_val, "tpl_delta.value restored"))
+
+    -- Live overlay: TemplateSized<float> (int header; float value; trailing pad to 0x20)
+    table.insert(results, value_expect(baz.tpl_sized.header, 0xEE, "tpl_sized.header read"))
+    table.insert(results, value_expect(baz.tpl_sized.value, 1.5, "tpl_sized.value read (T=float)"))
+    local old_sized_val = baz.tpl_sized.value
+    baz.tpl_sized.value = 9.99
+    table.insert(results, value_expect(round(baz.tpl_sized.value, 2), 9.99, "tpl_sized.value write"))
+    baz.tpl_sized.value = old_sized_val
+    table.insert(results, value_expect(baz.tpl_sized.value, old_sized_val, "tpl_sized.value restored"))
+
+    -- Live overlay: TemplateBitfield<int> (int flags; bf_a:4; bf_b:4; int after_bf)
+    table.insert(results, value_expect(baz.tpl_bitfield.flags, 0xFF, "tpl_bitfield.flags read"))
+    table.insert(results, value_expect(baz.tpl_bitfield.after_bf, 777, "tpl_bitfield.after_bf read"))
+    local old_bf_after = baz.tpl_bitfield.after_bf
+    baz.tpl_bitfield.after_bf = 3333
+    table.insert(results, value_expect(baz.tpl_bitfield.after_bf, 3333, "tpl_bitfield.after_bf write"))
+    baz.tpl_bitfield.after_bf = old_bf_after
+    table.insert(results, value_expect(baz.tpl_bitfield.after_bf, old_bf_after, "tpl_bitfield.after_bf restored"))
+
+    -- Live overlay: TemplateChild<int> (inherits Foo, then int extra)
+    table.insert(results, value_expect(baz.tpl_child.a, 10, "tpl_child.a read (inherited from Foo)"))
+    table.insert(results, value_expect(baz.tpl_child.b, 20, "tpl_child.b read (inherited from Foo)"))
+    table.insert(results, value_expect(round(baz.tpl_child.c, 0), 30, "tpl_child.c read (inherited from Foo)"))
+    table.insert(results, value_expect(baz.tpl_child.extra, 444, "tpl_child.extra read (T=int)"))
+    local old_child_extra = baz.tpl_child.extra
+    baz.tpl_child.extra = 5678
+    table.insert(results, value_expect(baz.tpl_child.extra, 5678, "tpl_child.extra write"))
+    baz.tpl_child.extra = old_child_extra
+    table.insert(results, value_expect(baz.tpl_child.extra, old_child_extra, "tpl_child.extra restored"))
+
+    -- Live overlay: TemplateChildComplex<int> (inherits Bar, then int value; int* ptr; int footer)
+    table.insert(results, value_expect(baz.tpl_child_complex.d, 50, "tpl_child_complex.d read (inherited from Bar)"))
+    table.insert(results, value_expect(baz.tpl_child_complex.value, 888, "tpl_child_complex.value read (T=int)"))
+    table.insert(results, value_expect(baz.tpl_child_complex.footer, 0xAB, "tpl_child_complex.footer read"))
+    local old_cc_val = baz.tpl_child_complex.value
+    baz.tpl_child_complex.value = 2222
+    table.insert(results, value_expect(baz.tpl_child_complex.value, 2222, "tpl_child_complex.value write"))
+    baz.tpl_child_complex.value = old_cc_val
+    table.insert(results, value_expect(baz.tpl_child_complex.value, old_cc_val, "tpl_child_complex.value restored"))
 
     -- Comment 3: template class should instantiate as Class, not Struct
     local classbox_t = ns:find_struct("TemplateClassBox")
@@ -1188,7 +1239,7 @@ struct ParseTestStruct {
         end
     end
 
-    --- Template codegen: + delta after size-0 T should NOT emit padding
+    --- Template codegen: + delta after size-0 T SHOULD emit fixed delta padding
     do
         local gsdk2 = sdkgenny.parse("type int 4 [[i32]]\ntemplate <typename T>\nstruct DeltaGenT { T value\n int after + 4 }")
         local gns2 = gsdk2:global_ns()
@@ -1200,9 +1251,10 @@ struct ParseTestStruct {
             if f then
                 local content = f:read("*a")
                 f:close()
-                -- After size-0 T, we can't compute padding. No pad_ expected.
+                -- Delta is a fixed 4-byte gap regardless of T's size.
+                -- Must emit padding so C++ compiled layout matches the type model.
                 local has_pad = content:find('pad_') ~= nil
-                table.insert(results, value_expect(has_pad, false, "DeltaGenT.hpp no padding after unknown-size T"))
+                table.insert(results, value_expect(has_pad, true, "DeltaGenT.hpp emits fixed delta padding after T"))
             end
         end
     end
