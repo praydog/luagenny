@@ -58,6 +58,12 @@ struct Bar {
     };
 };
 
+struct DeltaTest {
+    int first{};
+    char pad[4]{};  // 4-byte gap
+    int second{};
+};
+
 struct Thing {
     int abc{};
 };
@@ -102,6 +108,79 @@ struct TA : Student, Faculty {
     int hours{40};
 };
 
+template<typename T>
+struct TemplateBox {
+    char pad[8]{};
+    T* data{};
+};
+
+template<typename K, typename V>
+struct TemplatePair {
+    K key{};
+    V value{};
+};
+
+template<typename T>
+struct TemplateMixed {
+    int header{};
+    T value{};
+    T* ptr{};
+    int footer{};
+};
+
+template<typename T>
+struct TemplateArray {
+    T items[4]{};
+    int count{};
+};
+
+template<typename T>
+struct TemplateList {
+    T** data{};
+    int capacity{};
+    int size{};
+};
+
+template<typename T>
+struct TemplateDeltaAfterT {
+    T header{};
+    char delta_pad[4]{};  // the + 4 gap
+    int value{};
+};
+
+template<typename T>
+struct TemplateDelta {
+    int header{};
+    char delta_pad[4]{};  // the + 4 gap
+    T value{};
+};
+
+template<typename T>
+struct TemplateSized {
+    int header{};
+    T value{};
+    char trailing_pad[0x20 - sizeof(int) - sizeof(T)]{};  // pad to 0x20
+};
+
+template<typename T>
+struct TemplateBitfield {
+    T flags{};
+    int bf_storage{};  // holds bf_a:4 + bf_b:4
+    int after_bf{};
+};
+
+template<typename T>
+struct TemplateChild : Foo {
+    T extra{};
+};
+
+template<typename T>
+struct TemplateChildComplex : Bar {
+    T value{};
+    T* ptr{};
+    int footer{};
+};
+
 struct Baz : Bar {
     TA ta{};
     int e{};
@@ -115,6 +194,18 @@ struct Baz : Bar {
     bool im_true{true};
     bool im_false{false};
     char im_also_true{7};
+    TemplateBox<Foo> tpl_box{};
+    TemplatePair<int, float> tpl_pair{};
+    TemplateMixed<float> tpl_mixed{};
+    TemplateArray<int> tpl_arr{};
+    TemplateList<Thing> tpl_list{};
+    DeltaTest delta_test{};
+    TemplateDeltaAfterT<float> tpl_delta_after_t{};
+    TemplateDelta<int> tpl_delta{};
+    TemplateSized<float> tpl_sized{};
+    TemplateBitfield<int> tpl_bitfield{};
+    TemplateChild<int> tpl_child{};
+    TemplateChildComplex<int> tpl_child_complex{};
     __declspec(align(sizeof(void*))) RTTITest* rtti{};
     E* e_ptr{};
 };
@@ -132,6 +223,27 @@ type char 1
 type wchar_t 2
 
 struct RTTITest{}
+
+struct DeltaTest {
+    int first
+    int second + 4
+}
+
+struct VirtualBase {
+    virtual void first_virtual() @ 0
+    virtual int second_virtual() @ 1
+    int data @ 0x8
+}
+
+// Regression: void return type after variable (PEGTL backtrack stale fn_ret_type)
+struct VoidReturnTest {
+    int x
+    virtual void void_after_var() @ 0
+    float y
+    virtual int* nonvoid_after_var() @ 1
+    int z
+    virtual void void_after_var2() @ 2
+}
 
 enum Place {
     EARTH = 1,
@@ -182,6 +294,168 @@ struct TA : Student, Faculty {
     int hours
 }
 
+template <typename T>
+struct TemplateBox {
+    T* data @ 0x8
+}
+
+template <typename K, typename V>
+struct TemplatePair {
+    K key
+    V value
+}
+
+template <typename T>
+struct TemplateMixed {
+    int header
+    T value
+    T* ptr
+    int footer
+}
+
+// Test: template with explicit size + T by value (trailing padding test)
+template <typename T>
+struct TemplateSized 0x20 {
+    int header
+    T value
+}
+
+template <typename T>
+struct TemplateArray {
+    T[4] items
+    int count
+}
+
+template <typename T>
+struct TemplateList {
+    T** data
+    int capacity
+    int size
+}
+
+// Test: + delta in template (Copilot comment 2)
+template <typename T>
+struct TemplateDelta {
+    int header
+    T value + 4
+}
+
+// Test: + delta after template param (pathological case)
+template <typename T>
+struct TemplateDeltaAfterT {
+    T header
+    int value + 4
+}
+
+// Test: bitfields in template struct (Copilot comment 1)
+template <typename T>
+struct TemplateBitfield {
+    T flags
+    int bf_a : 4
+    int bf_b : 4
+    int after_bf
+}
+
+// Test: bitfield over-advance with explicit @ offset after bitfields
+template <typename T>
+struct TemplateBitfieldPinned 0x10 {
+    int bf_a : 4
+    int bf_b : 4
+    int bf_c : 4
+    T data @ 0x4
+}
+
+// Test: padding after size-0 T followed by @ offset
+template <typename T>
+struct TemplatePadAfterT {
+    int header
+    T value
+    int pinned @ 0x10
+}
+
+// Test: template class (Copilot comment 3)
+template <typename T>
+class TemplateClassBox {
+    T* data @ 0x8
+}
+
+// Test: template with parent (Copilot comment 4)
+template <typename T>
+struct TemplateChild : Foo {
+    T extra
+}
+
+// Test: template with parent + explicit size + multiple fields
+template <typename T>
+struct TemplateChildComplex : Bar {
+    T value
+    T* ptr
+    int footer
+}
+
+// Test: template with virtual function (vtable pointer)
+template <typename T>
+struct TemplateVirtual {
+    virtual void dummy() @ 0
+    T data @ 0x8
+}
+
+// Test: template with parent AND virtual function (double-count vtable test)
+template <typename T>
+struct TemplateVirtualChild : VirtualBase {
+    T extra
+}
+
+// Test: template with parent AND its OWN virtual function (double-count vtable test)
+template <typename T>
+struct TemplateVirtualChild2 : VirtualBase {
+    virtual void child_virtual() @ 2
+    T extra @ 0x10
+}
+
+// Test: namespace collision in template args
+namespace NsA {
+    struct Item 0x10 {
+        int a_val
+    }
+}
+
+namespace NsB {
+    struct Item 0x20 {
+        float b_val
+    }
+}
+
+struct NsCollisionTest {
+    TemplateBox<NsA.Item> box_a
+    TemplateBox<NsB.Item> box_b
+}
+
+// Test: multiple soft-dep pointers to same template (duplicate include test)
+struct DuplicateIncludeTest {
+    TemplateBox<Foo>* ptr_a
+    TemplateBox<int>* ptr_b
+    TemplatePair<int, float>* ptr_c
+    TemplatePair<float, int>* ptr_d
+}
+
+struct TemplateUser {
+    TemplateBox<Foo> box
+    TemplatePair<int, float> pair
+    TemplateMixed<float> mixed
+    TemplateArray<int> arr
+    TemplateBox<int> box_int
+    TemplatePair<float, int> pair_swapped
+    TemplateList<Foo> entity_list
+}
+
+// Test: instantiated template as pointer (soft dep / forward decl test)
+struct TemplatePtrUser {
+    TemplateBox<Foo>* box_ptr
+    TemplatePair<int, float>* pair_ptr
+    int value
+}
+
 struct Baz : Bar 0x100 {
 	TA ta
     int e
@@ -195,6 +469,18 @@ struct Baz : Bar 0x100 {
     bool im_true
     bool im_false
     bool im_also_true
+    TemplateBox<Foo> tpl_box
+    TemplatePair<int, float> tpl_pair
+    TemplateMixed<float> tpl_mixed
+    TemplateArray<int> tpl_arr
+    TemplateList<Thing> tpl_list
+    DeltaTest delta_test
+    TemplateDeltaAfterT<float> tpl_delta_after_t
+    TemplateDelta<int> tpl_delta
+    TemplateSized<float> tpl_sized
+    TemplateBitfield<int> tpl_bitfield
+    TemplateChild<int> tpl_child
+    TemplateChildComplex<int> tpl_child_complex
 	//RTTITest* test + 5
 }
 
@@ -229,14 +515,20 @@ int main(int argc, char* argv[]) {
 
     if (argc >= 2) {
         performing_tests = std::string{argv[1]} == "--test";
-        script_path = argv[2];
+        if (performing_tests) {
+            if (argc < 3) {
+                std::cerr << "Usage: " << argv[0] << " --test <script.lua>" << std::endl;
+                return 1;
+            }
+            script_path = argv[2];
+        }
     }
 
     // Create a Lua state
     sol::state lua{};
 
     lua.open_libraries(sol::lib::base, sol::lib::package, sol::lib::string, sol::lib::math, sol::lib::table, sol::lib::bit32,
-    sol::lib::utf8, sol::lib::os, sol::lib::coroutine);
+    sol::lib::utf8, sol::lib::os, sol::lib::coroutine, sol::lib::io);
 
     // Add the sdkgenny bindings
     luaopen_luagenny(lua);
@@ -287,6 +579,49 @@ int main(int argc, char* argv[]) {
     auto rtti = new RTTITest{};
     baz->rtti = rtti;
     baz->e_ptr = new E{};
+    baz->tpl_box.data = foo;
+    baz->tpl_pair.key = 99;
+    baz->tpl_pair.value = 2.718f;
+    baz->tpl_mixed.header = 0xAA;
+    baz->tpl_mixed.value = 6.28f;
+    baz->tpl_mixed.ptr = &baz->tpl_mixed.value;
+    baz->tpl_mixed.footer = 0xBB;
+    for (int i = 0; i < 4; ++i) baz->tpl_arr.items[i] = (i + 1) * 10;
+    baz->tpl_arr.count = 4;
+    // Populate TemplateList<Thing> with Thing* entries
+    static Thing* thing_ptrs[5];
+    static Thing thing_instances[5];
+    for (int i = 0; i < 5; ++i) {
+        thing_instances[i].abc = (i + 1) * 100;
+        thing_ptrs[i] = &thing_instances[i];
+    }
+    baz->tpl_list.data = thing_ptrs;
+    baz->tpl_list.capacity = 5;
+    baz->tpl_list.size = 5;
+    baz->delta_test.first = 111;
+    baz->delta_test.second = 222;
+    baz->tpl_delta_after_t.header = 3.14f;
+    baz->tpl_delta_after_t.value = 999;
+    // TemplateDelta<int>: int header; [4-byte gap]; int value
+    baz->tpl_delta.header = 0xDD;
+    baz->tpl_delta.value = 555;
+    // TemplateSized<float>: int header; float value; trailing pad to 0x20
+    baz->tpl_sized.header = 0xEE;
+    baz->tpl_sized.value = 1.5f;
+    // TemplateBitfield<int>: int flags; int bf_storage(bf_a:4,bf_b:4); int after_bf
+    baz->tpl_bitfield.flags = 0xFF;
+    baz->tpl_bitfield.bf_storage = (0x5) | (0xA << 4);  // bf_a=5, bf_b=10
+    baz->tpl_bitfield.after_bf = 777;
+    // TemplateChild<int>: inherits Foo, then int extra
+    baz->tpl_child.a = 10;
+    baz->tpl_child.b = 20;
+    baz->tpl_child.c = 30.0f;
+    baz->tpl_child.extra = 444;
+    // TemplateChildComplex<int>: inherits Bar, then int value; int* ptr; int footer
+    baz->tpl_child_complex.d = 50;
+    baz->tpl_child_complex.value = 888;
+    baz->tpl_child_complex.ptr = &baz->tpl_child_complex.value;
+    baz->tpl_child_complex.footer = 0xAB;
 
     lua["bazaddr"] = (uintptr_t)baz;
 
@@ -320,7 +655,15 @@ int main(int argc, char* argv[]) {
         }
     } else {
         try {
-            result = lua.script_file(script_path).get<bool>() ? 0 : 1;
+            std::cout << std::flush;
+            auto r = lua.safe_script_file(script_path);
+            if (!r.valid()) {
+                sol::error err = r;
+                std::cout << "Lua error: " << err.what() << std::endl;
+                result = 1;
+            } else {
+                result = r.get<bool>() ? 0 : 1;
+            }
         } catch (const std::exception& e) {
             std::cout << "Error: " << e.what() << std::endl;
         } catch (...) {

@@ -12,6 +12,7 @@ extern "C" {
 #include "sdkgenny.hpp"
 #include "ClassMacros.hpp"
 #include "Object.hpp"
+#include <sdkgenny/template_parameter.hpp>
 
 namespace luagenny {
 template<size_t N>
@@ -283,7 +284,9 @@ void create_bindings(sol::table sdkgenny) {
             }
 
             return sol::make_object(s, sol::lua_nil);
-        }
+        },
+        "get_comment", [](sdkgenny::Object& o) -> std::string { return o.comment(); },
+        "set_comment", [](sdkgenny::Object& o, const std::string& c) { o.comment("{}", c); }
     );
 
     (object.set(std::string("is_") + Args::name().data(), Args::is_a_standalone), ...);
@@ -317,7 +320,8 @@ int open_object(lua_State* l) {
         TypeDescriptor<sdkgenny::StaticFunction, "static_function">,
         TypeDescriptor<sdkgenny::Array, "array">,
         TypeDescriptor<sdkgenny::Parameter, "parameter">,
-        TypeDescriptor<sdkgenny::Constant, "constant">>(sdkgenny);
+        TypeDescriptor<sdkgenny::Constant, "constant">,
+        TypeDescriptor<sdkgenny::TemplateParameter, "template_parameter">>(sdkgenny);
 
     return 0;
 }

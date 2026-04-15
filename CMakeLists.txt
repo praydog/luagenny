@@ -69,12 +69,12 @@ find_package(sol2)
 
 include(FetchContent)
 
-message(STATUS "Fetching sdkgenny (5a6768a13d7d929cc7495d95d5f604593efcfd50)...")
+message(STATUS "Fetching sdkgenny (2a3b62c6f27af855d8a9e324a173bf48dc5f796e)...")
 FetchContent_Declare(sdkgenny
 	GIT_REPOSITORY
-		"https://github.com/cursey/sdkgenny.git"
+		"https://github.com/praydog/sdkgenny.git"
 	GIT_TAG
-		5a6768a13d7d929cc7495d95d5f604593efcfd50
+		2a3b62c6f27af855d8a9e324a173bf48dc5f796e
 )
 FetchContent_MakeAvailable(sdkgenny)
 
@@ -262,6 +262,9 @@ get_directory_property(CMKR_VS_STARTUP_PROJECT DIRECTORY ${PROJECT_SOURCE_DIR} D
 if(NOT CMKR_VS_STARTUP_PROJECT)
 	set_property(DIRECTORY ${PROJECT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT repl)
 endif()
+
+set(CMKR_TARGET repl)
+include("test/codegen_test.cmake")
 
 enable_testing()
 

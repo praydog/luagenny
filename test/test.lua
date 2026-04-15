@@ -149,7 +149,7 @@ function do_tests()
     table.insert(results, value_expect(#known_variables == #known_variables2, true, "#known_variables == #known_variables2"))
 
     table.insert(results, value_expect(known_variables ~= nil, true, "known_variables ~= nil"))
-    table.insert(results, value_expect(#known_variables, 12, "#known_variables"))
+    table.insert(results, value_expect(#known_variables, 24, "#known_variables"))
 
     for k, v in pairs(known_variables) do
         table.insert(results, value_expect(known_variables[k] == known_variables2[k], true, "known_variables[" .. tostring(k) .. "] == known_variables2[" .. tostring(k) .. "]"))
@@ -368,6 +368,22 @@ struct ParseTestStruct {
 
     local nYear = date_struct:find_variable("nYear")
     table.insert(results, value_expect(nYear:bit_size(), 8, "nYear:bit_size() == 8"))
+
+    -- Non-template bitfield bit_offset tests (Date: nWeekDay:3, nMonthDay:6, nMonth:5, nYear:8)
+    table.insert(results, value_expect(nWeekDay:bit_offset(), 0, "nWeekDay:bit_offset() == 0"))
+    table.insert(results, value_expect(nMonthDay:bit_offset(), 3, "nMonthDay:bit_offset() == 3"))
+    table.insert(results, value_expect(nMonth:bit_offset(), 9, "nMonth:bit_offset() == 9"))
+    -- nYear spans past 16 bits so it starts in the next storage unit
+    table.insert(results, value_expect(nYear:offset(), 2, "nYear:offset() == 2 (next ushort)"))
+    table.insert(results, value_expect(nYear:bit_offset(), 0, "nYear:bit_offset() == 0 (new storage unit)"))
+
+    -- Non-template bitfield: field after bitfields has correct byte offset
+    -- Foo has: int a(0), int b(4), float c(8), Place p(12), Place bf1:4(16), Place bf2:2(16)
+    -- Foo total = 0x14 (20 bytes). Bar has: int d(0), Foo* foo(4), int[4][3] m, Date date
+    local foo_struct = ns:find_struct("Foo")
+    table.insert(results, value_expect(foo_struct:find_variable("bf1"):bit_offset(), 0, "Foo.bf1:bit_offset() == 0"))
+    table.insert(results, value_expect(foo_struct:find_variable("bf2"):bit_offset(), 4, "Foo.bf2:bit_offset() == 4"))
+    table.insert(results, value_expect(foo_struct:find_variable("bf1"):offset(), foo_struct:find_variable("bf2"):offset(), "Foo.bf1 and bf2 share storage unit"))
 
     -- Variable offset setter
     local tv = fresh_ns:find_struct("ParseTestStruct"):find_variable("x")
@@ -611,6 +627,673 @@ struct ParseTestStruct {
     test_ec:value("Y", 20)
     local ec_vals = test_ec:values()
     table.insert(results, value_expect(#ec_vals, 2, "EnumClass:values() works"))
+
+    ----------------------------
+    --- Template type tests ----
+    ----------------------------
+    -- Test template struct definition via parsing
+    local template_box_t = ns:find_struct("TemplateBox")
+    table.insert(results, value_expect(template_box_t ~= nil, true, "find template struct TemplateBox"))
+    table.insert(results, value_expect(template_box_t:is_template(), true, "TemplateBox:is_template()"))
+    table.insert(results, value_expect(#template_box_t:template_parameters(), 1, "TemplateBox has 1 template param"))
+    table.insert(results, value_expect(template_box_t:template_parameters()[1]:name(), "T", "template param name is T"))
+
+    -- Test multi-param template
+    local template_pair_t = ns:find_struct("TemplatePair")
+    table.insert(results, value_expect(template_pair_t ~= nil, true, "find template struct TemplatePair"))
+    table.insert(results, value_expect(template_pair_t:is_template(), true, "TemplatePair:is_template()"))
+    table.insert(results, value_expect(#template_pair_t:template_parameters(), 2, "TemplatePair has 2 template params"))
+    table.insert(results, value_expect(template_pair_t:template_parameters()[1]:name(), "K", "first param is K"))
+    table.insert(results, value_expect(template_pair_t:template_parameters()[2]:name(), "V", "second param is V"))
+
+    -- Test template instantiation via parsing
+    local box_foo_t = ns:find_struct("TemplateBox<Foo>")
+    table.insert(results, value_expect(box_foo_t ~= nil, true, "find instantiated TemplateBox<Foo>"))
+    table.insert(results, value_expect(box_foo_t:is_template(), false, "instantiated struct is NOT a template"))
+    table.insert(results, value_expect(box_foo_t:find_variable("data") ~= nil, true, "instantiated struct has data field"))
+    table.insert(results, value_expect(box_foo_t:find_variable("data"):type():is_pointer(), true, "data field is a pointer"))
+    table.insert(results, value_expect(box_foo_t:find_variable("data"):type():as_pointer():to():name(), "Foo", "data points to Foo"))
+
+    -- Test multi-param instantiation
+    local pair_int_float_t = ns:find_struct("TemplatePair<int, float>")
+    table.insert(results, value_expect(pair_int_float_t ~= nil, true, "find instantiated TemplatePair<int, float>"))
+    table.insert(results, value_expect(pair_int_float_t:find_variable("key"):type():name(), "int", "pair.key type is int"))
+    table.insert(results, value_expect(pair_int_float_t:find_variable("value"):type():name(), "float", "pair.value type is float"))
+
+    -- Test programmatic template API
+    local prog_tpl = fresh_ns:struct("ProgTemplate")
+    local prog_T = prog_tpl:template_parameter("T")
+    table.insert(results, value_expect(prog_T ~= nil, true, "template_parameter() creates param"))
+    table.insert(results, value_expect(prog_T:name(), "T", "template param name"))
+    table.insert(results, value_expect(prog_tpl:is_template(), true, "struct with params is_template()"))
+    local prog_var = prog_tpl:variable("field")
+    prog_var:type(prog_T):offset(0)
+
+    -- Instantiate programmatically
+    local build_int = fresh_ns:find_type("int")
+    local prog_inst = prog_tpl:instantiate({build_int})
+    table.insert(results, value_expect(prog_inst ~= nil, true, "instantiate() returns struct"))
+    table.insert(results, value_expect(prog_inst:name(), "ProgTemplate<int>", "instantiated name"))
+    table.insert(results, value_expect(prog_inst:find_variable("field"):type():name(), "int", "instantiated field type is int"))
+    table.insert(results, value_expect(prog_inst:is_template(), false, "instantiated struct is NOT a template"))
+
+
+    ----------------------------
+    -- Template overlay r/w tests
+    ----------------------------
+    -- Read through template-typed field: baz.tpl_box is a TemplateBox<Foo>
+    table.insert(results, value_expect(baz.tpl_box ~= nil, true, "baz.tpl_box overlay exists"))
+    table.insert(results, value_expect(baz.tpl_box.data.a, 42, "baz.tpl_box.data.a (Foo* through template)"))
+    table.insert(results, value_expect(baz.tpl_box.data.b, 1337, "baz.tpl_box.data.b (Foo* through template)"))
+    table.insert(results, value_expect(round(baz.tpl_box.data.c, 1), 77.7, "baz.tpl_box.data.c (float through template)"))
+    -- Write through TemplateBox pointer field
+    local old_box_a = baz.tpl_box.data.a
+    baz.tpl_box.data.a = 9876
+    table.insert(results, value_expect(baz.tpl_box.data.a, 9876, "tpl_box.data.a write"))
+    baz.tpl_box.data.a = old_box_a
+    table.insert(results, value_expect(baz.tpl_box.data.a, old_box_a, "tpl_box.data.a restored"))
+
+    -- Read TemplatePair<int, float> fields
+    table.insert(results, value_expect(baz.tpl_pair.key, 99, "baz.tpl_pair.key (int through template)"))
+    table.insert(results, value_expect(round(baz.tpl_pair.value, 3), 2.718, "baz.tpl_pair.value (float through template)"))
+
+    -- Write through template overlay and read back
+    local old_key = baz.tpl_pair.key
+    baz.tpl_pair.key = 777
+    table.insert(results, value_expect(baz.tpl_pair.key, 777, "tpl_pair.key write/read"))
+    baz.tpl_pair.key = old_key
+    table.insert(results, value_expect(baz.tpl_pair.key, old_key, "tpl_pair.key restored"))
+
+    local old_val = baz.tpl_pair.value
+    baz.tpl_pair.value = 1.414
+    table.insert(results, value_expect(round(baz.tpl_pair.value, 3), 1.414, "tpl_pair.value write/read"))
+    baz.tpl_pair.value = old_val
+    table.insert(results, value_expect(round(baz.tpl_pair.value, 3), round(old_val, 3), "tpl_pair.value restored"))
+
+    ----------------------------
+    -- Template edge-case tests -
+    ----------------------------
+
+    -- Mixed template: non-template fields + template fields in same struct
+    local mixed_float_t = ns:find_struct("TemplateMixed<float>")
+    table.insert(results, value_expect(mixed_float_t ~= nil, true, "find TemplateMixed<float>"))
+    table.insert(results, value_expect(mixed_float_t:find_variable("header"):type():name(), "int", "mixed: non-template field type preserved"))
+    table.insert(results, value_expect(mixed_float_t:find_variable("value"):type():name(), "float", "mixed: T substituted to float"))
+    table.insert(results, value_expect(mixed_float_t:find_variable("ptr"):type():is_pointer(), true, "mixed: T* is pointer"))
+    table.insert(results, value_expect(mixed_float_t:find_variable("ptr"):type():as_pointer():to():name(), "float", "mixed: T* points to float"))
+    table.insert(results, value_expect(mixed_float_t:find_variable("footer"):type():name(), "int", "mixed: trailing non-template field preserved"))
+
+    -- Overlay reads on mixed template
+    table.insert(results, value_expect(baz.tpl_mixed.header, 0xAA, "tpl_mixed.header read"))
+    table.insert(results, value_expect(round(baz.tpl_mixed.value, 2), 6.28, "tpl_mixed.value read (T=float)"))
+    table.insert(results, value_expect(baz.tpl_mixed.footer, 0xBB, "tpl_mixed.footer read"))
+    -- T* ptr field: dereference should give the same value as tpl_mixed.value
+    table.insert(results, value_expect(round(baz.tpl_mixed.ptr:deref(), 2), 6.28, "tpl_mixed.ptr:deref() == value (T* through template)"))
+
+    -- Write + restore on mixed template
+    local old_mixed_hdr = baz.tpl_mixed.header
+    baz.tpl_mixed.header = 0xCC
+    table.insert(results, value_expect(baz.tpl_mixed.header, 0xCC, "tpl_mixed.header write"))
+    baz.tpl_mixed.header = old_mixed_hdr
+    table.insert(results, value_expect(baz.tpl_mixed.header, old_mixed_hdr, "tpl_mixed.header restored"))
+    -- Write through TemplateMixed T value field
+    local old_mixed_val = baz.tpl_mixed.value
+    baz.tpl_mixed.value = 99.99
+    table.insert(results, value_expect(round(baz.tpl_mixed.value, 2), 99.99, "tpl_mixed.value write (T=float)"))
+    baz.tpl_mixed.value = old_mixed_val
+    table.insert(results, value_expect(round(baz.tpl_mixed.value, 2), round(old_mixed_val, 2), "tpl_mixed.value restored"))
+
+    -- Array template: T[4] items
+    local arr_int_t = ns:find_struct("TemplateArray<int>")
+    table.insert(results, value_expect(arr_int_t ~= nil, true, "find TemplateArray<int>"))
+    table.insert(results, value_expect(arr_int_t:find_variable("count"):type():name(), "int", "array tpl: non-template field preserved"))
+    -- items field type should be an array of int
+    local items_type = arr_int_t:find_variable("items"):type()
+    table.insert(results, value_expect(items_type:is_array(), true, "array tpl: T[4] is array type"))
+
+    -- Overlay reads on array template
+    table.insert(results, value_expect(baz.tpl_arr.count, 4, "tpl_arr.count read"))
+    -- Array element access through template: T[4] items
+    for i = 0, 3 do
+        table.insert(results, value_expect(baz.tpl_arr.items[i], (i + 1) * 10, "tpl_arr.items[" .. i .. "] via ArrayOverlay"))
+    end
+    -- Write through T[4] array elements
+    local old_arr_0 = baz.tpl_arr.items[0]
+    baz.tpl_arr.items[0] = 5555
+    table.insert(results, value_expect(baz.tpl_arr.items[0], 5555, "tpl_arr.items[0] write"))
+    baz.tpl_arr.items[0] = old_arr_0
+    table.insert(results, value_expect(baz.tpl_arr.items[0], old_arr_0, "tpl_arr.items[0] restored"))
+
+    -- Also test the pre-existing int[4][3] m field on Bar (never tested before!)
+    for i = 0, 3 do
+        for j = 0, 2 do
+            table.insert(results, value_expect(baz.m[i][j], i + j, "baz.m[" .. i .. "][" .. j .. "] multi-dim array"))
+        end
+    end
+
+    -- ArrayOverlay __len and ipairs
+    table.insert(results, value_expect(#baz.tpl_arr.items, 4, "#tpl_arr.items == 4"))
+    table.insert(results, value_expect(#baz.m, 4, "#baz.m == 4 (outer dim)"))
+    table.insert(results, value_expect(#baz.m[0], 3, "#baz.m[0] == 3 (inner dim)"))
+    -- ipairs iteration (Lua ipairs uses 1-based indexing but our __index is 0-based,
+    -- so ipairs(arr) iterates keys 1..#arr which maps to elements 1..N-1 in C++.
+    -- For a 0-based C array this skips element 0 — that's a Lua convention mismatch.
+    -- Test that #arr returns the correct count regardless.)
+
+    -- ArrayOverlay bounds checking
+    local oob_read = baz.tpl_arr.items[-1]
+    table.insert(results, value_expect(oob_read == nil, true, "array[-1] returns nil (OOB)"))
+    local oob_read2 = baz.tpl_arr.items[4]  -- count is 4, valid indices 0-3
+    table.insert(results, value_expect(oob_read2 == nil, true, "array[count] returns nil (OOB)"))
+    local oob_read3 = baz.tpl_arr.items[999]
+    table.insert(results, value_expect(oob_read3 == nil, true, "array[999] returns nil (OOB)"))
+
+    -- Same template, different instantiations (dedup via TemplateUser)
+    local box_int_t = ns:find_struct("TemplateBox<int>")
+    table.insert(results, value_expect(box_int_t ~= nil, true, "find TemplateBox<int> (second instantiation)"))
+    table.insert(results, value_expect(box_int_t:find_variable("data"):type():as_pointer():to():name(), "int", "TemplateBox<int>.data -> int*"))
+    -- Verify TemplateBox<Foo> and TemplateBox<int> are different structs
+    table.insert(results, value_expect(box_foo_t ~= box_int_t, true, "different instantiations are different structs"))
+    -- But both came from the same template
+    table.insert(results, value_expect(box_foo_t:size(), box_int_t:size(), "same-shape instantiations have same size"))
+
+    -- Swapped params: TemplatePair<float, int> vs TemplatePair<int, float>
+    local pair_swapped_t = ns:find_struct("TemplatePair<float, int>")
+    table.insert(results, value_expect(pair_swapped_t ~= nil, true, "find TemplatePair<float, int>"))
+    table.insert(results, value_expect(pair_swapped_t:find_variable("key"):type():name(), "float", "swapped pair.key is float"))
+    table.insert(results, value_expect(pair_swapped_t:find_variable("value"):type():name(), "int", "swapped pair.value is int"))
+    -- Original and swapped are different structs
+    table.insert(results, value_expect(pair_int_float_t ~= pair_swapped_t, true, "swapped params produce different struct"))
+
+    -- Idempotent instantiation: calling instantiate again returns the same struct
+    local box_foo_t2 = template_box_t:instantiate({ns:find_struct("Foo")})
+    table.insert(results, value_expect(box_foo_t2:name(), "TemplateBox<Foo>", "re-instantiate returns same name"))
+
+    -- Programmatic: T used as both value and pointer in same template
+    local dual_tpl = fresh_ns:struct("DualUse")
+    local dual_T = dual_tpl:template_parameter("T")
+    dual_tpl:variable("by_val"):type(dual_T):offset(0)
+    dual_tpl:variable("by_ptr"):type(dual_T:ptr()):offset(8)
+
+    local dual_inst = dual_tpl:instantiate({fresh_ns:find_type("int")})
+    table.insert(results, value_expect(dual_inst ~= nil, true, "dual-use template instantiated"))
+    table.insert(results, value_expect(dual_inst:find_variable("by_val"):type():name(), "int", "dual: T by value -> int"))
+    table.insert(results, value_expect(dual_inst:find_variable("by_ptr"):type():is_pointer(), true, "dual: T* is pointer"))
+    table.insert(results, value_expect(dual_inst:find_variable("by_ptr"):type():as_pointer():to():name(), "int", "dual: T* -> int*"))
+
+    -- Programmatic: instantiate with wrong arg count returns nil
+    local bad_inst = template_box_t:instantiate({ns:find_type("int"), ns:find_type("float")})
+    table.insert(results, value_expect(bad_inst == nil, true, "instantiate with wrong arg count returns nil"))
+
+    -- Programmatic: double pointer T**
+    local dblptr_tpl = fresh_ns:struct("DblPtr")
+    local dblptr_T = dblptr_tpl:template_parameter("T")
+    dblptr_tpl:variable("pp"):type(dblptr_T:ptr():ptr()):offset(0)
+    local dblptr_inst = dblptr_tpl:instantiate({fresh_ns:find_type("int")})
+    table.insert(results, value_expect(dblptr_inst ~= nil, true, "T** template instantiated"))
+    local pp_type = dblptr_inst:find_variable("pp"):type()
+    table.insert(results, value_expect(pp_type:is_pointer(), true, "T** outer is pointer"))
+    table.insert(results, value_expect(pp_type:as_pointer():to():is_pointer(), true, "T** inner is pointer"))
+    table.insert(results, value_expect(pp_type:as_pointer():to():as_pointer():to():name(), "int", "T** -> int**"))
+
+    -- Template struct with explicit size: instantiated struct preserves it
+    local ptr_size = string.packsize("T")
+    local expected_box_size = 8 + ptr_size -- pad[8] + T*
+    table.insert(results, value_expect(box_foo_t:size(), expected_box_size, "instantiated TemplateBox<Foo> size"))
+    table.insert(results, value_expect(box_int_t:size(), expected_box_size, "instantiated TemplateBox<int> size"))
+
+    -- Template struct with @ offset: instantiated struct preserves pinned offsets
+    table.insert(results, value_expect(box_foo_t:find_variable("data"):offset(), 0x8, "instantiated preserves @ 0x8 offset"))
+    table.insert(results, value_expect(box_int_t:find_variable("data"):offset(), 0x8, "second instantiation preserves @ 0x8 offset"))
+
+    -- T** parsed template (real-world container pattern: T** data, uint32 cap, uint32 size)
+    local list_foo_t = ns:find_struct("TemplateList<Foo>")
+    table.insert(results, value_expect(list_foo_t ~= nil, true, "find TemplateList<Foo>"))
+    local list_data = list_foo_t:find_variable("data")
+    table.insert(results, value_expect(list_data ~= nil, true, "TemplateList has data field"))
+    table.insert(results, value_expect(list_data:type():is_pointer(), true, "T** data outer is pointer"))
+    table.insert(results, value_expect(list_data:type():as_pointer():to():is_pointer(), true, "T** data inner is pointer"))
+    table.insert(results, value_expect(list_data:type():as_pointer():to():as_pointer():to():name(), "Foo", "T** -> Foo**"))
+    table.insert(results, value_expect(list_foo_t:find_variable("capacity"):type():name(), "int", "list capacity is int"))
+    table.insert(results, value_expect(list_foo_t:find_variable("size"):type():name(), "int", "list size is int"))
+
+    -- Overlay iteration through T** template (the real-world entity list pattern)
+    -- baz.tpl_list is a TemplateList<Thing> with 5 Thing* entries
+    table.insert(results, value_expect(baz.tpl_list.size, 5, "tpl_list.size"))
+    table.insert(results, value_expect(baz.tpl_list.capacity, 5, "tpl_list.capacity"))
+    -- Iterate: tpl_list.data[i]:deref().abc == (i+1)*100
+    for i = 0, baz.tpl_list.size - 1 do
+        local entry = baz.tpl_list.data[i]:deref()
+        table.insert(results, value_expect(entry ~= nil, true, "tpl_list.data[" .. i .. "] not nil"))
+        table.insert(results, value_expect(entry.abc, (i + 1) * 100, "tpl_list.data[" .. i .. "].abc"))
+    end
+
+    -- Write through the template list and read back
+    local old_abc = baz.tpl_list.data[0]:deref().abc
+    baz.tpl_list.data[0]:deref().abc = 9999
+    table.insert(results, value_expect(baz.tpl_list.data[0]:deref().abc, 9999, "tpl_list write through T**"))
+    baz.tpl_list.data[0]:deref().abc = old_abc
+    table.insert(results, value_expect(baz.tpl_list.data[0]:deref().abc, old_abc, "tpl_list write restored"))
+
+    ----------------------------
+    -- Copilot-reported edge cases
+    ----------------------------
+
+    -- Comment 2: + delta in template should NOT preserve offset during instantiation
+    -- TemplateDelta<T> has: int header; T value + 4
+    -- With T=int: header(4) + 4 padding + value(4) = offsets 0, 8
+    local delta_t = ns:find_struct("TemplateDelta")
+    table.insert(results, value_expect(delta_t ~= nil, true, "find TemplateDelta"))
+    table.insert(results, value_expect(delta_t:is_template(), true, "TemplateDelta:is_template()"))
+
+    -- Instantiate TemplateDelta<int> and check value's offset
+    local delta_int = delta_t:instantiate({ns:find_type("int")})
+    table.insert(results, value_expect(delta_int ~= nil, true, "instantiate TemplateDelta<int>"))
+    -- value should be at offset 8: header(4 bytes) + 4 bytes delta
+    table.insert(results, value_expect(delta_int:find_variable("value"):offset(), 8, "delta: value offset = header(4) + delta(4) = 8"))
+
+    -- Pathological case: + delta AFTER a template param field
+    -- TemplateDeltaAfterT<T> has: T header; int value + 4
+    -- In template: header(size 0) + delta 4 = value at offset 4
+    -- With T=float(4): header(4) + delta 4 = value should be at offset 8
+    local delta2_t = ns:find_struct("TemplateDeltaAfterT")
+    table.insert(results, value_expect(delta2_t ~= nil, true, "find TemplateDeltaAfterT"))
+    local delta2_float = delta2_t:instantiate({ns:find_type("float")})
+    table.insert(results, value_expect(delta2_float ~= nil, true, "instantiate TemplateDeltaAfterT<float>"))
+    -- value should be at 4 (float) + 4 (delta) = 8
+    table.insert(results, value_expect(delta2_float:find_variable("value"):offset(), 8, "delta-after-T: value at header_size + delta"))
+    -- Live overlay read for TemplateDeltaAfterT<float>: value at offset 8 (header=4 + delta=4)
+    table.insert(results, value_expect(round(baz.tpl_delta_after_t.header, 2), 3.14, "delta-after-T: live header read"))
+    table.insert(results, value_expect(baz.tpl_delta_after_t.value, 999, "delta-after-T: live value read == 999"))
+
+    -- Live overlay: TemplateDelta<int> (int header; [4-byte gap]; int value)
+    table.insert(results, value_expect(baz.tpl_delta.header, 0xDD, "tpl_delta.header read"))
+    table.insert(results, value_expect(baz.tpl_delta.value, 555, "tpl_delta.value read (through +4 gap)"))
+    local old_delta_val = baz.tpl_delta.value
+    baz.tpl_delta.value = 1234
+    table.insert(results, value_expect(baz.tpl_delta.value, 1234, "tpl_delta.value write"))
+    baz.tpl_delta.value = old_delta_val
+    table.insert(results, value_expect(baz.tpl_delta.value, old_delta_val, "tpl_delta.value restored"))
+
+    -- Live overlay: TemplateSized<float> (int header; float value; trailing pad to 0x20)
+    table.insert(results, value_expect(baz.tpl_sized.header, 0xEE, "tpl_sized.header read"))
+    table.insert(results, value_expect(baz.tpl_sized.value, 1.5, "tpl_sized.value read (T=float)"))
+    local old_sized_val = baz.tpl_sized.value
+    baz.tpl_sized.value = 9.99
+    table.insert(results, value_expect(round(baz.tpl_sized.value, 2), 9.99, "tpl_sized.value write"))
+    baz.tpl_sized.value = old_sized_val
+    table.insert(results, value_expect(baz.tpl_sized.value, old_sized_val, "tpl_sized.value restored"))
+
+    -- Live overlay: TemplateBitfield<int> (int flags; bf_a:4; bf_b:4; int after_bf)
+    table.insert(results, value_expect(baz.tpl_bitfield.flags, 0xFF, "tpl_bitfield.flags read"))
+    table.insert(results, value_expect(baz.tpl_bitfield.after_bf, 777, "tpl_bitfield.after_bf read"))
+    local old_bf_after = baz.tpl_bitfield.after_bf
+    baz.tpl_bitfield.after_bf = 3333
+    table.insert(results, value_expect(baz.tpl_bitfield.after_bf, 3333, "tpl_bitfield.after_bf write"))
+    baz.tpl_bitfield.after_bf = old_bf_after
+    table.insert(results, value_expect(baz.tpl_bitfield.after_bf, old_bf_after, "tpl_bitfield.after_bf restored"))
+
+    -- Live overlay: TemplateChild<int> (inherits Foo, then int extra)
+    table.insert(results, value_expect(baz.tpl_child.a, 10, "tpl_child.a read (inherited from Foo)"))
+    table.insert(results, value_expect(baz.tpl_child.b, 20, "tpl_child.b read (inherited from Foo)"))
+    table.insert(results, value_expect(round(baz.tpl_child.c, 0), 30, "tpl_child.c read (inherited from Foo)"))
+    table.insert(results, value_expect(baz.tpl_child.extra, 444, "tpl_child.extra read (T=int)"))
+    local old_child_extra = baz.tpl_child.extra
+    baz.tpl_child.extra = 5678
+    table.insert(results, value_expect(baz.tpl_child.extra, 5678, "tpl_child.extra write"))
+    baz.tpl_child.extra = old_child_extra
+    table.insert(results, value_expect(baz.tpl_child.extra, old_child_extra, "tpl_child.extra restored"))
+
+    -- Live overlay: TemplateChildComplex<int> (inherits Bar, then int value; int* ptr; int footer)
+    table.insert(results, value_expect(baz.tpl_child_complex.d, 50, "tpl_child_complex.d read (inherited from Bar)"))
+    table.insert(results, value_expect(baz.tpl_child_complex.value, 888, "tpl_child_complex.value read (T=int)"))
+    table.insert(results, value_expect(baz.tpl_child_complex.footer, 0xAB, "tpl_child_complex.footer read"))
+    local old_cc_val = baz.tpl_child_complex.value
+    baz.tpl_child_complex.value = 2222
+    table.insert(results, value_expect(baz.tpl_child_complex.value, 2222, "tpl_child_complex.value write"))
+    baz.tpl_child_complex.value = old_cc_val
+    table.insert(results, value_expect(baz.tpl_child_complex.value, old_cc_val, "tpl_child_complex.value restored"))
+
+    -- Comment 3: template class should instantiate as Class, not Struct
+    local classbox_t = ns:find_struct("TemplateClassBox")
+    table.insert(results, value_expect(classbox_t ~= nil, true, "find TemplateClassBox"))
+    table.insert(results, value_expect(classbox_t:is_class(), true, "TemplateClassBox is_class()"))
+    local classbox_int = classbox_t:instantiate({ns:find_type("int")})
+    table.insert(results, value_expect(classbox_int ~= nil, true, "instantiate TemplateClassBox<int>"))
+    table.insert(results, value_expect(classbox_int:is_class(), true, "TemplateClassBox<int> is_class()"))
+
+    -- Comment 4: template struct with parent should account for parent size
+    local child_t = ns:find_struct("TemplateChild")
+    table.insert(results, value_expect(child_t ~= nil, true, "find TemplateChild"))
+    local child_int = child_t:instantiate({ns:find_type("int")})
+    table.insert(results, value_expect(child_int ~= nil, true, "instantiate TemplateChild<int>"))
+    -- extra should be after Foo's fields (Foo size = 0x14 = 20 bytes)
+    local foo_size = ns:find_struct("Foo"):size()
+    table.insert(results, value_expect(child_int:find_variable("extra"):offset(), foo_size, "template child: extra at parent end"))
+
+    -- Complex template with parent: TemplateChildComplex<T> : Bar { T value; T* ptr; int footer }
+    local cplx_t = ns:find_struct("TemplateChildComplex")
+    table.insert(results, value_expect(cplx_t ~= nil, true, "find TemplateChildComplex"))
+    local bar_size = ns:find_struct("Bar"):size()
+    local cplx_int = cplx_t:instantiate({ns:find_type("int")})
+    table.insert(results, value_expect(cplx_int ~= nil, true, "instantiate TemplateChildComplex<int>"))
+    -- value should start right after Bar
+    table.insert(results, value_expect(cplx_int:find_variable("value"):offset(), bar_size, "complex child: value at Bar end"))
+    -- ptr should be after value (int=4)
+    table.insert(results, value_expect(cplx_int:find_variable("ptr"):offset(), bar_size + 4, "complex child: ptr after value"))
+    -- footer should be after ptr (pointer size)
+    table.insert(results, value_expect(cplx_int:find_variable("footer"):offset(), bar_size + 4 + ptr_size, "complex child: footer after ptr"))
+
+    -- Template with virtual function: TemplateVirtual<T> { virtual void dummy() @ 0; T data @ 0x8 }
+    local virt_t = ns:find_struct("TemplateVirtual")
+    table.insert(results, value_expect(virt_t ~= nil, true, "find TemplateVirtual"))
+    local virt_int = virt_t:instantiate({ns:find_type("int")})
+    table.insert(results, value_expect(virt_int ~= nil, true, "instantiate TemplateVirtual<int>"))
+    -- data @ 0x8 should be preserved (explicit offset after vtable pointer)
+    table.insert(results, value_expect(virt_int:find_variable("data"):offset(), 0x8, "virtual template: data @ 0x8 preserved"))
+    -- size should account for vtable ptr + data
+    table.insert(results, value_expect(virt_int:size() >= 0xC, true, "virtual template: size includes vtable + data"))
+
+    -- Template with parent AND virtual (should not double-count vtable)
+    local vchild_t = ns:find_struct("TemplateVirtualChild")
+    table.insert(results, value_expect(vchild_t ~= nil, true, "find TemplateVirtualChild"))
+    local vbase_size = ns:find_struct("VirtualBase"):size()
+    local vchild_int = vchild_t:instantiate({ns:find_type("int")})
+    table.insert(results, value_expect(vchild_int ~= nil, true, "instantiate TemplateVirtualChild<int>"))
+    -- extra should be right after VirtualBase, not double-counted with vtable
+    table.insert(results, value_expect(vchild_int:find_variable("extra"):offset(), vbase_size, "virtual child: extra at parent end (no vtable double-count)"))
+
+    -- Template with parent AND its OWN virtual (double-count vtable test)
+    local vchild2_t = ns:find_struct("TemplateVirtualChild2")
+    table.insert(results, value_expect(vchild2_t ~= nil, true, "find TemplateVirtualChild2"))
+    local vchild2_int = vchild2_t:instantiate({ns:find_type("int")})
+    table.insert(results, value_expect(vchild2_int ~= nil, true, "instantiate TemplateVirtualChild2<int>"))
+    -- extra @ 0x10 is explicit, should be preserved regardless of vtable accounting
+    table.insert(results, value_expect(vchild2_int:find_variable("extra"):offset(), 0x10, "virtual child2: extra @ 0x10 preserved"))
+    -- virtual void return type should be nil (void), not a TemplateParameter
+    local vchild2_vfuncs = vchild2_t:get_all_virtual_function()
+    table.insert(results, value_expect(#vchild2_vfuncs, 1, "TemplateVirtualChild2 has 1 virtual func"))
+    table.insert(results, value_expect(vchild2_vfuncs[1]:name(), "child_virtual", "virtual func name"))
+    table.insert(results, value_expect(vchild2_vfuncs[1]:returns() == nil, true, "virtual void return type is nil (void)"))
+
+    -- Comment 1: bitfields in template struct
+    local bf_t = ns:find_struct("TemplateBitfield")
+    table.insert(results, value_expect(bf_t ~= nil, true, "find TemplateBitfield"))
+    table.insert(results, value_expect(bf_t:is_template(), true, "TemplateBitfield:is_template()"))
+    -- Instantiate and verify fields exist
+    local bf_int = bf_t:instantiate({ns:find_type("int")})
+    table.insert(results, value_expect(bf_int ~= nil, true, "instantiate TemplateBitfield<int>"))
+    table.insert(results, value_expect(bf_int:find_variable("flags"):type():name(), "int", "bf: flags is int"))
+    table.insert(results, value_expect(bf_int:find_variable("bf_a"):is_bitfield(), true, "bf: bf_a is bitfield"))
+    table.insert(results, value_expect(bf_int:find_variable("bf_b"):is_bitfield(), true, "bf: bf_b is bitfield"))
+    -- after_bf should be after the bitfield storage unit, not double-counted
+    -- flags(int=4) + bitfield storage(int=4) + after_bf should be at offset 8
+    table.insert(results, value_expect(bf_int:find_variable("after_bf"):offset(), 8, "bf: after_bf at correct offset"))
+
+    -- Programmatic: template bitfield with gap (bits 4-7 skipped)
+    local gap_tpl = fresh_ns:struct("GapBitfield")
+    local gap_T = gap_tpl:template_parameter("T")
+    local gap_bf_a = gap_tpl:variable("bf_a")
+    gap_bf_a:type(build_int):offset(0):bit_size(4):bit_offset(0)
+    local gap_bf_b = gap_tpl:variable("bf_b")
+    gap_bf_b:type(build_int):offset(0):bit_size(4):bit_offset(8)
+    local gap_data = gap_tpl:variable("data")
+    gap_data:type(gap_T):offset(4)
+
+    -- Instantiate and check offsets survived
+    local gap_inst = gap_tpl:instantiate({build_int})
+    table.insert(results, value_expect(gap_inst ~= nil, true, "gap bitfield template instantiated"))
+    table.insert(results, value_expect(gap_inst:find_variable("bf_a"):bit_offset(), 0, "gap bf_a bit_offset 0"))
+    table.insert(results, value_expect(gap_inst:find_variable("bf_b"):bit_offset(), 8, "gap bf_b bit_offset 8 (gap at 4-7)"))
+    table.insert(results, value_expect(gap_inst:find_variable("data"):offset(), 4, "gap data at offset 4"))
+
+    -- Namespace collision in template instantiation names
+    local nscol = ns:find_struct("NsCollisionTest")
+    table.insert(results, value_expect(nscol ~= nil, true, "find NsCollisionTest"))
+    -- Both fields should exist and have different types
+    local box_a_var = nscol:find_variable("box_a")
+    local box_b_var = nscol:find_variable("box_b")
+    table.insert(results, value_expect(box_a_var ~= nil, true, "NsCollisionTest has box_a"))
+    table.insert(results, value_expect(box_b_var ~= nil, true, "NsCollisionTest has box_b"))
+    -- The instantiated types should be different structs
+    local box_a_type = box_a_var:type():as_struct()
+    local box_b_type = box_b_var:type():as_struct()
+    table.insert(results, value_expect(box_a_type ~= box_b_type, true, "TemplateBox<NsA.Item> ~= TemplateBox<NsB.Item>"))
+
+    -- Regression: non-template + delta struct with live overlay reads
+    table.insert(results, value_expect(baz.delta_test.first, 111, "delta_test.first (non-template + delta)"))
+    table.insert(results, value_expect(baz.delta_test.second, 222, "delta_test.second (non-template + delta)"))
+    -- Write through + delta field
+    local old_delta_second = baz.delta_test.second
+    baz.delta_test.second = 4444
+    table.insert(results, value_expect(baz.delta_test.second, 4444, "delta_test.second write"))
+    baz.delta_test.second = old_delta_second
+    table.insert(results, value_expect(baz.delta_test.second, old_delta_second, "delta_test.second restored"))
+    -- Verify the offset: first(4) + pad(4) + second at offset 8
+    local dt = ns:find_struct("DeltaTest")
+    table.insert(results, value_expect(dt:find_variable("second"):offset(), 8, "DeltaTest.second offset = 4 + delta(4) = 8"))
+
+    -- Non-template virtual function struct
+    local vbase = ns:find_struct("VirtualBase")
+    table.insert(results, value_expect(vbase ~= nil, true, "find VirtualBase"))
+    table.insert(results, value_expect(vbase:has_any_virtual_function(), true, "VirtualBase has virtuals"))
+    -- data should be at offset 0x8 (after vtable pointer)
+    table.insert(results, value_expect(vbase:find_variable("data"):offset(), 0x8, "VirtualBase.data at 0x8 (after vtable)"))
+    -- vtable_index checks
+    local vfuncs = vbase:get_all_virtual_function()
+    table.insert(results, value_expect(#vfuncs, 2, "VirtualBase has 2 virtual functions"))
+    table.insert(results, value_expect(vfuncs[1]:vtable_index(), 0, "first_virtual vtable_index == 0"))
+    table.insert(results, value_expect(vfuncs[2]:vtable_index(), 1, "second_virtual vtable_index == 1"))
+    -- Regression: void return type must be nil, not stale from prior variable
+    table.insert(results, value_expect(vfuncs[1]:returns() == nil, true, "VirtualBase first_virtual void return is nil"))
+    table.insert(results, value_expect(vfuncs[2]:returns() ~= nil, true, "VirtualBase second_virtual non-void return exists"))
+    table.insert(results, value_expect(vfuncs[2]:returns():name(), "int", "VirtualBase second_virtual returns int"))
+
+    -- Regression: non-template void return type after variable (PEGTL backtrack bug)
+    local vrt = ns:find_struct("VoidReturnTest")
+    table.insert(results, value_expect(vrt ~= nil, true, "find VoidReturnTest"))
+    local vrt_vfuncs = vrt:get_all_virtual_function()
+    table.insert(results, value_expect(#vrt_vfuncs, 3, "VoidReturnTest has 3 virtual functions"))
+    -- void_after_var: declared after int x, return should be void (nil)
+    table.insert(results, value_expect(vrt_vfuncs[1]:name(), "void_after_var", "vrt vfunc[1] name"))
+    table.insert(results, value_expect(vrt_vfuncs[1]:returns() == nil, true, "void_after_var returns void (not stale int)"))
+    -- nonvoid_after_var: declared after float y, return should be int*
+    table.insert(results, value_expect(vrt_vfuncs[2]:name(), "nonvoid_after_var", "vrt vfunc[2] name"))
+    table.insert(results, value_expect(vrt_vfuncs[2]:returns() ~= nil, true, "nonvoid_after_var has return type"))
+    -- void_after_var2: declared after int z, return should be void (nil)
+    table.insert(results, value_expect(vrt_vfuncs[3]:name(), "void_after_var2", "vrt vfunc[3] name"))
+    table.insert(results, value_expect(vrt_vfuncs[3]:returns() == nil, true, "void_after_var2 returns void (not stale int)"))
+    -- size should include vtable pointer + data
+    table.insert(results, value_expect(vbase:size() >= 0xC, true, "VirtualBase size includes vtable + data"))
+
+    --- Instantiation: comment copying
+    do
+        local csdk = sdkgenny.parse("type int 4 [[i32]]\ntemplate <typename T>\nstruct CT { T value @ 0x8 }")
+        local cns = csdk:global_ns()
+        local ctpl = cns:find_struct("CT")
+        local tv = ctpl:find_variable("value")
+        tv:set_comment("important")
+        table.insert(results, value_expect(tv:get_comment(), "important\n", "template var comment set"))
+        local ci = ctpl:instantiate({cns:find_type("int")})
+        table.insert(results, value_expect(ci ~= nil, true, "comment template instantiated"))
+        local iv = ci:find_variable("value")
+        table.insert(results, value_expect(iv ~= nil, true, "instantiated has value var"))
+        table.insert(results, value_expect(iv:get_comment(), "important\n", "instantiated comment == 'important'"))
+    end
+
+    --- Instantiation: delta copying
+    do
+        local dt = ns:find_struct("TemplateDelta")
+        table.insert(results, value_expect(dt ~= nil, true, "find TemplateDelta"))
+        local di = dt:instantiate({ns:find_type("int")})
+        table.insert(results, value_expect(di ~= nil, true, "instantiate TemplateDelta<int>"))
+        local dv = di:find_variable("value")
+        table.insert(results, value_expect(dv ~= nil, true, "delta inst has value"))
+        table.insert(results, value_expect(dv:delta(), 4, "instantiated delta preserved"))
+        local dt2 = ns:find_struct("TemplateDeltaAfterT")
+        local di2 = dt2:instantiate({ns:find_type("float")})
+        local dv2 = di2:find_variable("value")
+        table.insert(results, value_expect(dv2:delta(), 4, "delta-after-T preserved"))
+    end
+
+    --- is_template_instance / template_source API
+    do
+        local tf = ns:find_struct("TemplateBox<Foo>")
+        table.insert(results, value_expect(tf:is_template_instance(), true, "TemplateBox<Foo> is_template_instance"))
+        table.insert(results, value_expect(tf:template_source():name(), "TemplateBox", "template_source name"))
+        local tt = ns:find_struct("TemplateBox")
+        table.insert(results, value_expect(tt:is_template_instance(), false, "TemplateBox NOT template_instance"))
+    end
+
+    --- generate() with template instance deps
+    do
+        local ssdk = sdkgenny.parse("type int 4\nstruct C 0x10 { int x }\ntemplate <typename T>\nstruct G { T* d @ 0x8 }")
+        local sns = ssdk:global_ns()
+        local gi = sns:find_struct("G"):instantiate({sns:find_struct("C")})
+        local us = sns:struct("FU")
+        us:size(0x20)
+        local bv = us:variable("box")
+        bv:type(gi)
+        bv:offset(0)
+        local f = us["function"](us, "go")
+        f:returns(sns:find_type("int"))
+        f:procedure("return 0;")
+        local gen_ok, gen_err = pcall(function() ssdk:generate("test/bug19_out/") end)
+        table.insert(results, value_expect(gen_ok, true, "generate() with template instance dep"))
+        if not gen_ok then print("  error: " .. tostring(gen_err)) end
+    end
+
+    --- Instantiation: null-type variable doesn't crash
+    do
+        local nsdk = sdkgenny.parse("type int 4 [[i32]]\ntemplate <typename T>\nstruct NullT { T value @ 0x8 }")
+        local nns = nsdk:global_ns()
+        local ntpl = nns:find_struct("NullT")
+        -- Add a variable with no type set
+        local untyped = ntpl:variable("untyped")
+        -- instantiate should not crash even with a null-type variable
+        local nok, nerr = pcall(function() ntpl:instantiate({nns:find_type("int")}) end)
+        table.insert(results, value_expect(nok, true, "instantiate with null-type var doesn't crash"))
+        if not nok then print("  error: " .. tostring(nerr)) end
+    end
+
+    --- Instantiation: + 0 delta vs @ offset under taint
+    do
+        -- Schema: T header (size 0 in template), then int pinned @ 0x10, then int delta0 + 0
+        -- After instantiation with int, header is 4 bytes. pinned should stay at 0x10.
+        -- delta0 should be appended after pinned (0x10 + 4 = 0x14), NOT pinned.
+        local dsdk = sdkgenny.parse("type int 4 [[i32]]\ntemplate <typename T>\nstruct DZ { T header\n int pinned @ 0x10\n int delta0 + 0 }")
+        local dns = dsdk:global_ns()
+        local dtpl = dns:find_struct("DZ")
+        local dinst = dtpl:instantiate({dns:find_type("int")})
+        table.insert(results, value_expect(dinst ~= nil, true, "delta-zero template instantiated"))
+        local pv = dinst:find_variable("pinned")
+        table.insert(results, value_expect(pv:offset(), 0x10, "pinned @ 0x10 preserved under taint"))
+        local dv = dinst:find_variable("delta0")
+        table.insert(results, value_expect(dv:offset(), 0x14, "+ 0 delta appended after pinned, not pinned itself"))
+    end
+
+    --- Self-referential template doesn't include itself
+    do
+        local ssdk = sdkgenny.parse("type int 4 [[i32]]\ntemplate <typename T>\nstruct Node { T value\n Node<T>* next }")
+        local sns = ssdk:global_ns()
+        -- generate should succeed and the Node.hpp should not #include itself
+        local ok, err = pcall(function() ssdk:generate("test/selfref_out/") end)
+        table.insert(results, value_expect(ok, true, "self-referential template generates"))
+        if not ok then print("  error: " .. tostring(err)) end
+        if ok then
+            -- Read generated header and check it doesn't include itself
+            local f = io.open("test/selfref_out/Node.hpp", "r")
+            table.insert(results, value_expect(f ~= nil, true, "Node.hpp generated"))
+            if f then
+                local content = f:read("*a")
+                f:close()
+                local has_self_include = content:find('#include.-Node') ~= nil
+                table.insert(results, value_expect(has_self_include, false, "Node.hpp does not include itself"))
+            end
+        end
+    end
+
+    --- Duplicate template parameter names
+    do
+        local dsdk = sdkgenny.parse("type int 4 [[i32]]\ntype float 4 [[f32]]")
+        local dns = dsdk:global_ns()
+        local dtpl = dns:struct("DupParam")
+        dtpl:template_parameter("T")
+        dtpl:template_parameter("T")  -- duplicate
+        -- Should have 1 param, not 2 (deduplicated)
+        table.insert(results, value_expect(#dtpl:template_parameters(), 1, "duplicate template param deduplicated"))
+        -- Instantiation with 1 arg should succeed since there's really only 1 param
+        local int_t = dns:find_type("int")
+        local inst = dtpl:instantiate({int_t})
+        table.insert(results, value_expect(inst ~= nil, true, "instantiate with deduped param succeeds"))
+    end
+
+    --- Template codegen: + delta after known-size field emits correct padding
+    do
+        local gsdk = sdkgenny.parse("type int 4 [[i32]]\ntemplate <typename T>\nstruct DeltaGen { int before\n int after + 4 }")
+        local gns = gsdk:global_ns()
+        local ok, err = pcall(function() gsdk:generate("test/deltagen_out/") end)
+        table.insert(results, value_expect(ok, true, "delta template generates"))
+        if ok then
+            local f = io.open("test/deltagen_out/DeltaGen.hpp", "r")
+            table.insert(results, value_expect(f ~= nil, true, "DeltaGen.hpp generated"))
+            if f then
+                local content = f:read("*a")
+                f:close()
+                -- + 4 creates a gap: before ends at 4, after at 8. Padding expected.
+                local has_pad = content:find('pad_') ~= nil
+                table.insert(results, value_expect(has_pad, true, "DeltaGen.hpp has padding for + delta gap"))
+            end
+        end
+    end
+
+    --- Template codegen: + delta after size-0 T SHOULD emit fixed delta padding
+    do
+        local gsdk2 = sdkgenny.parse("type int 4 [[i32]]\ntemplate <typename T>\nstruct DeltaGenT { T value\n int after + 4 }")
+        local gns2 = gsdk2:global_ns()
+        local ok2, err2 = pcall(function() gsdk2:generate("test/deltagen_out/") end)
+        table.insert(results, value_expect(ok2, true, "delta-after-T template generates"))
+        if ok2 then
+            local f = io.open("test/deltagen_out/DeltaGenT.hpp", "r")
+            table.insert(results, value_expect(f ~= nil, true, "DeltaGenT.hpp generated"))
+            if f then
+                local content = f:read("*a")
+                f:close()
+                -- Delta is a fixed 4-byte gap regardless of T's size.
+                -- Must emit padding so C++ compiled layout matches the type model.
+                local has_pad = content:find('pad_') ~= nil
+                table.insert(results, value_expect(has_pad, true, "DeltaGenT.hpp emits fixed delta padding after T"))
+            end
+        end
+    end
+
+    --- Template codegen: current_offset must not go backwards on out-of-order @ offsets
+    do
+        -- Template with T* (known size) + out-of-order pinned offsets.
+        -- Without monotonic current_offset, padding between b and c would be overcounted.
+        local gsdk = sdkgenny.parse("type int 4 [[i32]]\ntemplate <typename T>\nstruct MonoTest 0x20 { T* data @ 0x0\n int a @ 0x10\n int b @ 0x4\n int c @ 0x18 }")
+        local gns = gsdk:global_ns()
+        local ok, err = pcall(function() gsdk:generate("test/mono_out/") end)
+        table.insert(results, value_expect(ok, true, "monotonic offset template generates"))
+        if ok then
+            local f = io.open("test/mono_out/MonoTest.hpp", "r")
+            table.insert(results, value_expect(f ~= nil, true, "MonoTest.hpp generated"))
+            if f then
+                local content = f:read("*a")
+                f:close()
+                -- Trailing padding should be 0x20 - 0x1c = 0x4, not corrupted
+                -- by current_offset going backwards from 0x14 to 0x4.
+                local size_match = content:match('Size: (0x%x+)')
+                table.insert(results, value_expect(size_match, "0x20", "MonoTest size is 0x20"))
+                -- Check that pad between b(@4,size4=end 8) and c(@0x18) is correct.
+                -- Without fix: current_offset goes to 0x4 after b, then pad to 0x18
+                -- would be 0x14 bytes (wrong). With fix: current_offset stays at 0x14
+                -- (from a@0x10+4), b doesn't lower it, pad to 0x18 is 0x4 (correct).
+                local bad_pad = content:find('pad_4%[0x14%]')
+                table.insert(results, value_expect(bad_pad == nil, true, "no oversized pad from backwards offset"))
+            end
+        end
+    end
 
     local total_passed = 0
 

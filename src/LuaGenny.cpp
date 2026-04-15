@@ -27,6 +27,7 @@ extern "C" {
 
 #include <sdkgenny.hpp>
 #include <sdkgenny_parser.hpp>
+#include <sdkgenny/template_parameter.hpp>
 
 #include "classes/ClassMacros.hpp"
 #include "classes/Sdk.hpp"
@@ -348,6 +349,61 @@ protected:
     sdkgenny::Variable* m_from{};
 };
 
+class ArrayOverlay : public Overlay<sdkgenny::Array> {
+public:
+    ArrayOverlay(uintptr_t address, sdkgenny::Array* arr)
+        : Overlay(address, arr)
+    {
+    }
+
+    sol::object index(sol::this_state s, sol::object key) override {
+        if (!key.is<int>()) {
+            return sol::make_object(s, sol::lua_nil);
+        }
+
+        auto idx = key.as<int>();
+        auto elem = m_type->of();
+        auto elem_size = elem->size();
+
+        if (elem_size == 0) {
+            return sol::make_object(s, sol::lua_nil);
+        }
+
+        if (idx < 0 || static_cast<size_t>(idx) >= m_type->count()) {
+            return sol::make_object(s, sol::lua_nil);
+        }
+
+        auto elem_addr = m_address + (idx * elem_size);
+        return sol::make_object(s, standalone_parse(s, elem_addr, elem, nullptr));
+    }
+
+    void new_index(sol::this_state s, sol::object key, sol::object value) override {
+        if (!key.is<int>()) {
+            return;
+        }
+
+        auto idx = key.as<int>();
+        auto elem = m_type->of();
+        auto elem_size = elem->size();
+
+        if (elem_size == 0) {
+            return;
+        }
+
+        if (idx < 0 || static_cast<size_t>(idx) >= m_type->count()) {
+            return;
+        }
+
+        auto elem_addr = m_address + (idx * elem_size);
+        sol::function lua_writer = sol::state_view{s}["sdkgenny_writer"];
+        lua_writer(s, elem_addr, elem_size, value);
+    }
+
+    size_t length() const {
+        return m_type->count();
+    }
+};
+
 sol::object standalone_parse(sol::this_state s, uintptr_t address, sdkgenny::Type* t, sdkgenny::Variable* v) {
     if (t == nullptr) {
         return sol::make_object(s, address);
@@ -355,6 +411,18 @@ sol::object standalone_parse(sol::this_state s, uintptr_t address, sdkgenny::Typ
 
     if (t->is_a<sdkgenny::Struct>()) {
         return sol::make_object(s, StructOverlay{address, dynamic_cast<sdkgenny::Struct*>(t)});
+    }
+
+    if (t->is_a<sdkgenny::Array>()) {
+        auto arr = dynamic_cast<sdkgenny::Array*>(t);
+        // If the array has metadata (e.g. char[32] [[utf8*]]), read as that type directly.
+        auto md = arr->metadata();
+        if (md.empty() && v != nullptr) { md = v->metadata(); }
+        if (!md.empty()) {
+            // Fall through to metadata-based reading below.
+        } else {
+            return sol::make_object(s, ArrayOverlay{address, arr});
+        }
     }
 
     const auto is_pointer = t->is_a<sdkgenny::Pointer>();
@@ -492,6 +560,14 @@ int open(lua_State* l) {
         sol::meta_function::new_index, &api::PointerOverlay::new_index // Access like ptr->field = value in C++ or an array, like ptr[i] = value
     );
 
+    sdkgenny.new_usertype<api::ArrayOverlay>("ArrayOverlay",
+        "type", &api::ArrayOverlay::type_,
+        "address", &api::ArrayOverlay::address,
+        sol::meta_function::index, &api::ArrayOverlay::index,
+        sol::meta_function::new_index, &api::ArrayOverlay::new_index,
+        sol::meta_function::length, &api::ArrayOverlay::length
+    );
+
     sdkgenny.push();
     luagenny::open_sdk(l);
 
@@ -505,6 +581,10 @@ int open(lua_State* l) {
     luagenny::open_type(l);
 
     sdkgenny.new_usertype<sdkgenny::GenericType>("GenericType",
+        sol::base_classes, sol::bases<GENNY_TYPE_BASES>()
+    );
+
+    sdkgenny.new_usertype<sdkgenny::TemplateParameter>("TemplateParameter",
         sol::base_classes, sol::bases<GENNY_TYPE_BASES>()
     );
 
