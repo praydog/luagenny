@@ -34,7 +34,14 @@ int open_variable(lua_State* l) {
         MULTIFUNCTION(sdkgenny::Variable, bit_size, size_t),
         MULTIFUNCTION(sdkgenny::Variable, bit_offset, size_t),
         "is_bitfield", &sdkgenny::Variable::is_bitfield,
-        "bit_append", &sdkgenny::Variable::bit_append
+        "bit_append", &sdkgenny::Variable::bit_append,
+        "delta", [](sol::this_state s, sdkgenny::Variable& v, sol::object param) -> sol::object {
+            if (param.is<sol::lua_nil_t>()) {
+                return sol::make_object(s, v.delta());
+            }
+            v.delta(param.as<uintptr_t>());
+            return sol::make_object(s, &v);
+        }
     );
 
 

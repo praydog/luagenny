@@ -581,7 +581,15 @@ int main(int argc, char* argv[]) {
         }
     } else {
         try {
-            result = lua.script_file(script_path).get<bool>() ? 0 : 1;
+            std::cout << std::flush;
+            auto r = lua.safe_script_file(script_path);
+            if (!r.valid()) {
+                sol::error err = r;
+                std::cout << "Lua error: " << err.what() << std::endl;
+                result = 1;
+            } else {
+                result = r.get<bool>() ? 0 : 1;
+            }
         } catch (const std::exception& e) {
             std::cout << "Error: " << e.what() << std::endl;
         } catch (...) {

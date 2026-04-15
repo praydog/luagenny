@@ -284,7 +284,9 @@ void create_bindings(sol::table sdkgenny) {
             }
 
             return sol::make_object(s, sol::lua_nil);
-        }
+        },
+        "get_comment", [](sdkgenny::Object& o) -> std::string { return o.comment(); },
+        "set_comment", [](sdkgenny::Object& o, const std::string& c) { o.comment("{}", c); }
     );
 
     (object.set(std::string("is_") + Args::name().data(), Args::is_a_standalone), ...);

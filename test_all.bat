@@ -9,6 +9,7 @@ echo === x64 ===
 call "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat" >nul 2>&1
 cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 if %errorlevel% neq 0 exit /b %errorlevel%
+ninja -C build -t clean >nul 2>&1
 cmake --build build
 if %errorlevel% neq 0 exit /b %errorlevel%
 ctest --test-dir build -C Release --output-on-failure

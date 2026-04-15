@@ -65,6 +65,12 @@ void create_bindings(sol::table sdkgenny) {
             }
             return s.instantiate(args);
         },
+        "is_template_instance", &sdkgenny::Struct::is_template_instance,
+        "template_source", [](sol::this_state s, sdkgenny::Struct& st) -> sol::object {
+            auto src = st.template_source();
+            if (src) return sol::make_object(s, src);
+            return sol::make_object(s, sol::lua_nil);
+        },
         "bitfield", [] (sdkgenny::Struct& st, int offset, sol::this_state s) -> sol::table {
             auto bitfield_vars = st.bitfield(offset);
             sol::table result = sol::state_view(s).create_table();

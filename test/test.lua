@@ -1047,6 +1047,63 @@ struct ParseTestStruct {
     -- size should include vtable pointer + data
     table.insert(results, value_expect(vbase:size() >= 0xC, true, "VirtualBase size includes vtable + data"))
 
+    --- Instantiation: comment copying
+    do
+        local csdk = sdkgenny.parse("type int 4 [[i32]]\ntemplate <typename T>\nstruct CT { T value @ 0x8 }")
+        local cns = csdk:global_ns()
+        local ctpl = cns:find_struct("CT")
+        local tv = ctpl:find_variable("value")
+        tv:set_comment("important")
+        table.insert(results, value_expect(tv:get_comment(), "important\n", "template var comment set"))
+        local ci = ctpl:instantiate({cns:find_type("int")})
+        table.insert(results, value_expect(ci ~= nil, true, "comment template instantiated"))
+        local iv = ci:find_variable("value")
+        table.insert(results, value_expect(iv ~= nil, true, "instantiated has value var"))
+        table.insert(results, value_expect(iv:get_comment(), "important\n", "instantiated comment == 'important'"))
+    end
+
+    --- Instantiation: delta copying
+    do
+        local dt = ns:find_struct("TemplateDelta")
+        table.insert(results, value_expect(dt ~= nil, true, "find TemplateDelta"))
+        local di = dt:instantiate({ns:find_type("int")})
+        table.insert(results, value_expect(di ~= nil, true, "instantiate TemplateDelta<int>"))
+        local dv = di:find_variable("value")
+        table.insert(results, value_expect(dv ~= nil, true, "delta inst has value"))
+        table.insert(results, value_expect(dv:delta(), 4, "instantiated delta preserved"))
+        local dt2 = ns:find_struct("TemplateDeltaAfterT")
+        local di2 = dt2:instantiate({ns:find_type("float")})
+        local dv2 = di2:find_variable("value")
+        table.insert(results, value_expect(dv2:delta(), 4, "delta-after-T preserved"))
+    end
+
+    --- is_template_instance / template_source API
+    do
+        local tf = ns:find_struct("TemplateBox<Foo>")
+        table.insert(results, value_expect(tf:is_template_instance(), true, "TemplateBox<Foo> is_template_instance"))
+        table.insert(results, value_expect(tf:template_source():name(), "TemplateBox", "template_source name"))
+        local tt = ns:find_struct("TemplateBox")
+        table.insert(results, value_expect(tt:is_template_instance(), false, "TemplateBox NOT template_instance"))
+    end
+
+    --- generate() with template instance deps
+    do
+        local ssdk = sdkgenny.parse("type int 4\nstruct C 0x10 { int x }\ntemplate <typename T>\nstruct G { T* d @ 0x8 }")
+        local sns = ssdk:global_ns()
+        local gi = sns:find_struct("G"):instantiate({sns:find_struct("C")})
+        local us = sns:struct("FU")
+        us:size(0x20)
+        local bv = us:variable("box")
+        bv:type(gi)
+        bv:offset(0)
+        local f = us["function"](us, "go")
+        f:returns(sns:find_type("int"))
+        f:procedure("return 0;")
+        local gen_ok, gen_err = pcall(function() ssdk:generate("test/bug19_out/") end)
+        table.insert(results, value_expect(gen_ok, true, "generate() with template instance dep"))
+        if not gen_ok then print("  error: " .. tostring(gen_err)) end
+    end
+
     local total_passed = 0
 
     for k, v in pairs(results) do
