@@ -41,7 +41,8 @@ int open_variable(lua_State* l) {
             }
             v.delta(param.as<uintptr_t>());
             return sol::make_object(s, &v);
-        }
+        },
+        "has_delta", &sdkgenny::Variable::has_delta
     );
 
 

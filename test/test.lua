@@ -1104,6 +1104,34 @@ struct ParseTestStruct {
         if not gen_ok then print("  error: " .. tostring(gen_err)) end
     end
 
+    --- Instantiation: null-type variable doesn't crash
+    do
+        local nsdk = sdkgenny.parse("type int 4 [[i32]]\ntemplate <typename T>\nstruct NullT { T value @ 0x8 }")
+        local nns = nsdk:global_ns()
+        local ntpl = nns:find_struct("NullT")
+        -- Add a variable with no type set
+        local untyped = ntpl:variable("untyped")
+        -- instantiate should not crash even with a null-type variable
+        local nok, nerr = pcall(function() ntpl:instantiate({nns:find_type("int")}) end)
+        table.insert(results, value_expect(nok, true, "instantiate with null-type var doesn't crash"))
+        if not nok then print("  error: " .. tostring(nerr)) end
+    end
+
+    --- Instantiation: + 0 delta vs @ offset under taint
+    do
+        -- Schema: T header (size 0 in template), then int pinned @ 0x10, then int delta0 + 0
+        -- After instantiation with int, header is 4 bytes. pinned should stay at 0x10.
+        -- delta0 should be appended after pinned (0x10 + 4 = 0x14), NOT pinned.
+        local dsdk = sdkgenny.parse("type int 4 [[i32]]\ntemplate <typename T>\nstruct DZ { T header\n int pinned @ 0x10\n int delta0 + 0 }")
+        local dns = dsdk:global_ns()
+        local dtpl = dns:find_struct("DZ")
+        local dinst = dtpl:instantiate({dns:find_type("int")})
+        table.insert(results, value_expect(dinst ~= nil, true, "delta-zero template instantiated"))
+        local pv = dinst:find_variable("pinned")
+        table.insert(results, value_expect(pv:offset(), 0x10, "pinned @ 0x10 preserved under taint"))
+        local dv = dinst:find_variable("delta0")
+        table.insert(results, value_expect(dv:offset(), 0x14, "+ 0 delta appended after pinned, not pinned itself"))
+    end
     local total_passed = 0
 
     for k, v in pairs(results) do
