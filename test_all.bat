@@ -13,6 +13,10 @@ cmake --build build
 if %errorlevel% neq 0 exit /b %errorlevel%
 ctest --test-dir build -C Release --output-on-failure
 if %errorlevel% neq 0 exit /b %errorlevel%
+echo.
+echo === x64 header verification ===
+python test\verify_headers.py
+if %errorlevel% neq 0 exit /b %errorlevel%
 
 echo.
 echo === x86 ===
