@@ -18,6 +18,7 @@ using ushort = uint16_t;
 #include "TemplateArray.hpp"
 #include "TemplateList.hpp"
 #include "TemplateBitfield.hpp"
+#include "TemplateBitfieldPinned.hpp"
 #include "Foo.hpp"
 #include "Bar.hpp"
 #include "TemplateChild.hpp"
@@ -86,6 +87,11 @@ static_assert(sizeof(ListFoo) == sizeof(void*) + 8, "TemplateList<Foo> size");
 static_assert(sizeof(BfInt) == 12, "TemplateBitfield<int> size: int(4) + bitfield unit(4) + int(4)");
 static_assert(offsetof(BfInt, flags) == 0, "TemplateBitfield.flags offset");
 static_assert(offsetof(BfInt, after_bf) == 8, "TemplateBitfield.after_bf offset");
+
+// TemplateBitfieldPinned: three bitfields share one int, then T data @ 0x4
+using BfPinnedInt = TemplateBitfieldPinned<int>;
+static_assert(offsetof(BfPinnedInt, data) == 4, "BfPinned.data at 0x4 (after bitfield storage unit)");
+static_assert(sizeof(BfPinnedInt) == 8, "BfPinned<int> size: bitfield(4) + int(4)");
 
 // TemplateChild: inherits from Foo, T field should be after Foo's layout
 static_assert(sizeof(ChildInt) == sizeof(Foo) + sizeof(int), "TemplateChild<int> size");

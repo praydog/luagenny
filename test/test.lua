@@ -931,6 +931,11 @@ struct ParseTestStruct {
     table.insert(results, value_expect(vchild2_int ~= nil, true, "instantiate TemplateVirtualChild2<int>"))
     -- extra @ 0x10 is explicit, should be preserved regardless of vtable accounting
     table.insert(results, value_expect(vchild2_int:find_variable("extra"):offset(), 0x10, "virtual child2: extra @ 0x10 preserved"))
+    -- virtual void return type should be nil (void), not a TemplateParameter
+    local vchild2_vfuncs = vchild2_t:get_all_virtual_function()
+    table.insert(results, value_expect(#vchild2_vfuncs, 1, "TemplateVirtualChild2 has 1 virtual func"))
+    table.insert(results, value_expect(vchild2_vfuncs[1]:name(), "child_virtual", "virtual func name"))
+    table.insert(results, value_expect(vchild2_vfuncs[1]:returns() == nil, true, "virtual void return type is nil (void)"))
 
     -- Comment 1: bitfields in template struct
     local bf_t = ns:find_struct("TemplateBitfield")
@@ -945,6 +950,19 @@ struct ParseTestStruct {
     -- after_bf should be after the bitfield storage unit, not double-counted
     -- flags(int=4) + bitfield storage(int=4) + after_bf should be at offset 8
     table.insert(results, value_expect(bf_int:find_variable("after_bf"):offset(), 8, "bf: after_bf at correct offset"))
+
+    -- Namespace collision in template instantiation names
+    local nscol = ns:find_struct("NsCollisionTest")
+    table.insert(results, value_expect(nscol ~= nil, true, "find NsCollisionTest"))
+    -- Both fields should exist and have different types
+    local box_a_var = nscol:find_variable("box_a")
+    local box_b_var = nscol:find_variable("box_b")
+    table.insert(results, value_expect(box_a_var ~= nil, true, "NsCollisionTest has box_a"))
+    table.insert(results, value_expect(box_b_var ~= nil, true, "NsCollisionTest has box_b"))
+    -- The instantiated types should be different structs
+    local box_a_type = box_a_var:type():as_struct()
+    local box_b_type = box_b_var:type():as_struct()
+    table.insert(results, value_expect(box_a_type ~= box_b_type, true, "TemplateBox<NsA.Item> ~= TemplateBox<NsB.Item>"))
 
     -- Regression: non-template + delta struct with live overlay reads
     table.insert(results, value_expect(baz.delta_test.first, 111, "delta_test.first (non-template + delta)"))
@@ -964,6 +982,25 @@ struct ParseTestStruct {
     table.insert(results, value_expect(#vfuncs, 2, "VirtualBase has 2 virtual functions"))
     table.insert(results, value_expect(vfuncs[1]:vtable_index(), 0, "first_virtual vtable_index == 0"))
     table.insert(results, value_expect(vfuncs[2]:vtable_index(), 1, "second_virtual vtable_index == 1"))
+    -- Regression: void return type must be nil, not stale from prior variable
+    table.insert(results, value_expect(vfuncs[1]:returns() == nil, true, "VirtualBase first_virtual void return is nil"))
+    table.insert(results, value_expect(vfuncs[2]:returns() ~= nil, true, "VirtualBase second_virtual non-void return exists"))
+    table.insert(results, value_expect(vfuncs[2]:returns():name(), "int", "VirtualBase second_virtual returns int"))
+
+    -- Regression: non-template void return type after variable (PEGTL backtrack bug)
+    local vrt = ns:find_struct("VoidReturnTest")
+    table.insert(results, value_expect(vrt ~= nil, true, "find VoidReturnTest"))
+    local vrt_vfuncs = vrt:get_all_virtual_function()
+    table.insert(results, value_expect(#vrt_vfuncs, 3, "VoidReturnTest has 3 virtual functions"))
+    -- void_after_var: declared after int x, return should be void (nil)
+    table.insert(results, value_expect(vrt_vfuncs[1]:name(), "void_after_var", "vrt vfunc[1] name"))
+    table.insert(results, value_expect(vrt_vfuncs[1]:returns() == nil, true, "void_after_var returns void (not stale int)"))
+    -- nonvoid_after_var: declared after float y, return should be int*
+    table.insert(results, value_expect(vrt_vfuncs[2]:name(), "nonvoid_after_var", "vrt vfunc[2] name"))
+    table.insert(results, value_expect(vrt_vfuncs[2]:returns() ~= nil, true, "nonvoid_after_var has return type"))
+    -- void_after_var2: declared after int z, return should be void (nil)
+    table.insert(results, value_expect(vrt_vfuncs[3]:name(), "void_after_var2", "vrt vfunc[3] name"))
+    table.insert(results, value_expect(vrt_vfuncs[3]:returns() == nil, true, "void_after_var2 returns void (not stale int)"))
     -- size should include vtable pointer + data
     table.insert(results, value_expect(vbase:size() >= 0xC, true, "VirtualBase size includes vtable + data"))
 

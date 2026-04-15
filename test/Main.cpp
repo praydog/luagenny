@@ -189,6 +189,16 @@ struct VirtualBase {
     int data @ 0x8
 }
 
+// Regression: void return type after variable (PEGTL backtrack stale fn_ret_type)
+struct VoidReturnTest {
+    int x
+    virtual void void_after_var() @ 0
+    float y
+    virtual int* nonvoid_after_var() @ 1
+    int z
+    virtual void void_after_var2() @ 2
+}
+
 enum Place {
     EARTH = 1,
     MOON = 2,
@@ -300,6 +310,15 @@ struct TemplateBitfield {
     int after_bf
 }
 
+// Test: bitfield over-advance with explicit @ offset after bitfields
+template <typename T>
+struct TemplateBitfieldPinned 0x10 {
+    int bf_a : 4
+    int bf_b : 4
+    int bf_c : 4
+    T data @ 0x4
+}
+
 // Test: template class (Copilot comment 3)
 template <typename T>
 class TemplateClassBox {
@@ -336,10 +355,27 @@ struct TemplateVirtualChild : VirtualBase {
 // Test: template with parent AND its OWN virtual function (double-count vtable test)
 template <typename T>
 struct TemplateVirtualChild2 : VirtualBase {
-    virtual int* child_virtual() @ 2
+    virtual void child_virtual() @ 2
     T extra @ 0x10
 }
 
+// Test: namespace collision in template args
+namespace NsA {
+    struct Item 0x10 {
+        int a_val
+    }
+}
+
+namespace NsB {
+    struct Item 0x20 {
+        float b_val
+    }
+}
+
+struct NsCollisionTest {
+    TemplateBox<NsA.Item> box_a
+    TemplateBox<NsB.Item> box_b
+}
 
 struct TemplateUser {
     TemplateBox<Foo> box
