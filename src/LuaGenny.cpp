@@ -139,6 +139,14 @@ void writer(sol::this_state s, uintptr_t address, size_t size, sol::object value
 }
 
 std::optional<std::tuple<sdkgenny::Variable*, size_t>> get_variable(sdkgenny::Struct* s, const std::string& name, size_t additional_offset = 0) {
+    if (s == nullptr) {
+        // Defensive: reached when a StructOverlay was constructed with a null
+        // Struct* (e.g. a Lua-side find_struct()/find_namespace() lookup that
+        // returned nil got passed straight through). Fail soft instead of the
+        // null-deref that used to happen inside Object::find().
+        return std::nullopt;
+    }
+
     auto v = s->find<sdkgenny::Variable>(name);
 
     if (v != nullptr) {
@@ -193,6 +201,10 @@ public:
     }
 
     sol::object index(sol::this_state s, sol::object key) override {
+        if (m_type == nullptr) {
+            return sol::make_object(s, sol::lua_nil);
+        }
+
         if (key.is<int>()) {
             // Pretend it's an inlined array
             return sol::make_object(s, StructOverlay{m_address + (key.as<int>() * m_type->size()), m_type});
@@ -219,6 +231,10 @@ public:
     }
 
     void new_index(sol::this_state s, sol::object key, sol::object value) override {
+        if (m_type == nullptr) {
+            return;
+        }
+
         if (!key.is<std::string>()) {
             return;
         }
@@ -277,9 +293,13 @@ public:
     }
 
     sol::object index(sol::this_state s, sol::object key) override {
+        if (m_type == nullptr) {
+            return sol::make_object(s, sol::lua_nil);
+        }
+
         const auto pointed_to = ptr_internal(s);
 
-        if (pointed_to == 0) {
+        if (pointed_to == 0 || m_type->to() == nullptr) {
             return sol::make_object(s, sol::lua_nil);
         }
 
@@ -296,9 +316,13 @@ public:
     }
 
     void new_index(sol::this_state s, sol::object key, sol::object value) override {
+        if (m_type == nullptr) {
+            return;
+        }
+
         const auto pointed_to = ptr_internal(s);
 
-        if (pointed_to == 0) {
+        if (pointed_to == 0 || m_type->to() == nullptr) {
             return;
         }
 
@@ -319,9 +343,13 @@ public:
     
     // Address pointed to, not address of pointer
     sol::object d(sol::this_state s) const {
+        if (m_type == nullptr) {
+            return sol::make_object(s, sol::lua_nil);
+        }
+
         const auto pointed_to = ptr_internal(s);
 
-        if (pointed_to == 0) {
+        if (pointed_to == 0 || m_type->to() == nullptr) {
             return sol::make_object(s, sol::lua_nil);
         }
 
